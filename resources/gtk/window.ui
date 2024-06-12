@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="WaffleGtkAppWindow" parent="GtkApplicationWindow">
+    <!-- <property name="show-menubar">true</property> for some reason doesn't work here -->
+    <property name="title">Waffle</property>
+    <child>
+      <object class="GtkBox">
+        <child>
+          <object class="BGR555ColorPicker" id="color_picker">
+          </object>
+        </child>
+        <child>
+          <object class="GtkButton" id="test_button">
+          </object>
+        </child>
+      </object>
+    </child>
+  </template>
+</interface>
