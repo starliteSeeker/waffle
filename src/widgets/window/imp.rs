@@ -1,13 +1,17 @@
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::sync::OnceLock;
 
+use glib::clone;
 use glib::subclass::InitializingObject;
 use glib::subclass::Signal;
-use glib::{clone, closure_local};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{glib, Button, CompositeTemplate};
 
+use crate::data::palette::Palette;
 use crate::widgets::color_picker::ColorPicker;
+use crate::widgets::palette_picker::PalettePicker;
 
 #[derive(CompositeTemplate, Default)]
 #[template(resource = "/com/example/waffle/window.ui")]
@@ -16,6 +20,10 @@ pub struct Window {
     pub test_button: TemplateChild<Button>,
     #[template_child]
     pub color_picker: TemplateChild<ColorPicker>,
+    #[template_child]
+    pub palette_picker: TemplateChild<PalettePicker>,
+
+    pub palette_data: Rc<RefCell<Palette>>,
 }
 
 // The central trait for subclassing a GObject
@@ -27,9 +35,10 @@ impl ObjectSubclass for Window {
 
     fn class_init(klass: &mut Self::Class) {
         ColorPicker::ensure_type();
+        PalettePicker::ensure_type();
 
         klass.bind_template();
-        // klass.bind_template_callbacks();
+        klass.install_action("win.close", None, |window, _, _| window.close());
     }
 
     fn instance_init(obj: &InitializingObject<Self>) {
@@ -42,15 +51,20 @@ impl ObjectImpl for Window {
     fn constructed(&self) {
         self.parent_constructed();
 
-        self.color_picker.connect_closure(
-            "change-color",
-            false,
-            closure_local!(move |_: ColorPicker, red: u32, green: u32, blue: u32| {
-                println!("{} {} {}", red, green, blue);
-            }),
-        );
+        // setup between color picker and palette picker
+        // link color picker to selected color_idx ...
+        self.palette_picker
+            .setup_change_color(self.color_picker.clone(), self.palette_data.clone());
+        // ... and the other way around
+        self.color_picker
+            .setup_set_color(self.palette_picker.clone());
+        self.palette_picker
+            .setup_emit_set_color(self.palette_data.clone());
 
-        self.color_picker.setup_set_color(self.obj().clone());
+        // setup palette picker
+        self.palette_picker
+            .setup_palette_data(self.palette_data.clone());
+
         self.test_button
             .connect_clicked(clone!(@weak self as this => move |_| {
                 let red = 1_u32;

@@ -25,7 +25,6 @@ impl ColorPicker {
                 this.set_green(green);
                 this.set_blue(blue);
                 this.imp().color_square.queue_draw();
-                println!("set to {red} {green} {blue}");
             }),
         );
     }

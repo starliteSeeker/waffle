@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <menu id="menubar">
+    <submenu>
+      <attribute name="label">_File</attribute>
+      <item>
+        <attribute name="label">_Quit</attribute>
+        <attribute name="action">win.close</attribute>
+      </item>
+    </submenu>
+  </menu>
+</interface>

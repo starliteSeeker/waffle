@@ -1,7 +1,9 @@
+pub mod data;
 pub mod widgets;
 
 use gtk::prelude::*;
-use gtk::{gio, glib, Application};
+use gtk::{gio, glib};
+use gtk::{Application, Builder};
 use widgets::window::Window;
 
 const APP_ID: &str = "com.example.waffle";
@@ -13,11 +15,17 @@ fn main() -> glib::ExitCode {
     // Create a new application
     let app = Application::builder().application_id(APP_ID).build();
 
-    // Connect to "activate" signal of `app`
+    app.connect_startup(on_startup);
     app.connect_activate(build_ui);
 
     // Run the application
     app.run()
+}
+
+fn on_startup(app: &Application) {
+    let menubar =
+        Builder::from_resource("/com/example/waffle/menus.ui").object::<gio::Menu>("menubar");
+    app.set_menubar(menubar.as_ref());
 }
 
 fn build_ui(app: &Application) {

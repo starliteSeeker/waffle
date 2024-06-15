@@ -2,11 +2,7 @@
 <interface>
   <template class="BGR555ColorPicker" parent="GtkBox">
     <property name="orientation">horizontal</property>
-    <property name="margin-start">10</property>
-    <property name="margin-end">10</property>
-    <property name="margin-top">10</property>
-    <property name="margin-bottom">10</property>
-
+    
     <child>
       <object class="GtkDrawingArea" id="color_square">
         <property name="content-width">50</property>

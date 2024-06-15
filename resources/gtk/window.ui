@@ -5,8 +5,21 @@
     <property name="title">Waffle</property>
     <child>
       <object class="GtkBox">
+        <property name="orientation">vertical</property>
+        <child>
+          <object class="PalettePicker" id="palette_picker">
+            <property name="margin-start">10</property>
+            <property name="margin-end">10</property>
+            <property name="margin-top">10</property>
+            <property name="margin-bottom">10</property>
+          </object>
+        </child>
         <child>
           <object class="BGR555ColorPicker" id="color_picker">
+            <property name="margin-start">10</property>
+            <property name="margin-end">10</property>
+            <property name="margin-top">10</property>
+            <property name="margin-bottom">10</property>
           </object>
         </child>
         <child>

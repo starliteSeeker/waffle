@@ -17,7 +17,7 @@ impl Window {
         // Create new window
         Object::builder()
             .property("application", app)
-            // .property("show-menubar", true)
+            .property("show-menubar", true)
             .build()
     }
 }
