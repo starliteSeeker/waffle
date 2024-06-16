@@ -6,8 +6,15 @@
       <object class="GtkBox">
         <property name="orientation">horizontal</property>
         <child>
-          <object class="GtkLabel" id="color_idx_label">
-            <property name="label">$?? / $FF</property>
+          <object class="GtkButton" id="palette_open_btn">
+            <property name="margin-start">10</property>
+            <property name="margin-end">10</property>
+            <property name="margin-top">10</property>
+            <property name="margin-bottom">10</property>
+            <property name="label">Open</property>
+            <property name="icon-name">document-open-symbolic</property>
+            <property name="tooltip-text">Open palette file</property>
+            <property name="action-name">palette.open</property>
           </object>
         </child>
         <child>
@@ -40,6 +47,15 @@
             <property name="content-height">384</property>
           </object>
         </child>
+      </object>
+    </child>
+    <child>
+      <object class="GtkLabel" id="color_idx_label">
+        <property name="margin-start">5</property>
+        <property name="margin-end">5</property>
+        <property name="margin-top">5</property>
+        <property name="margin-bottom">5</property>
+        <property name="label">$?? / $FF</property>
       </object>
     </child>
   </template>

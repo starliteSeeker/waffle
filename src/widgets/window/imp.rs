@@ -7,7 +7,8 @@ use glib::subclass::InitializingObject;
 use glib::subclass::Signal;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-use gtk::{glib, Button, CompositeTemplate};
+use gtk::Button;
+use gtk::{glib, CompositeTemplate};
 
 use crate::data::palette::Palette;
 use crate::widgets::color_picker::ColorPicker;
@@ -64,7 +65,12 @@ impl ObjectImpl for Window {
         // setup palette picker
         self.palette_picker
             .setup_palette_data(self.palette_data.clone());
+        self.palette_picker
+            .setup_actions(self.palette_data.clone(), self.obj().clone());
 
+        self.test_button.set_action_name(Some("palette.test"));
+
+        /*
         self.test_button
             .connect_clicked(clone!(@weak self as this => move |_| {
                 let red = 1_u32;
@@ -73,6 +79,7 @@ impl ObjectImpl for Window {
                 this.obj().emit_by_name::<()>("set-color",
                     &[&red.to_value(), &green.to_value(), &blue.to_value()]);
             }));
+        */
     }
 
     fn signals() -> &'static [Signal] {

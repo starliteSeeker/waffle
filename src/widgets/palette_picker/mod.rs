@@ -3,14 +3,17 @@ mod imp;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use gio::{ActionEntry, SimpleActionGroup};
 use glib::clone;
 use glib::closure_local;
-use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
+use gtk::{gio, glib};
+use gtk::{FileChooserAction, FileChooserDialog, FileFilter, ResponseType};
 
 use crate::data::color::Color;
 use crate::data::palette::Palette;
+use crate::widgets::window::Window;
 
 const PAL_TILE_WIDTH: f64 = 24.0;
 
@@ -29,6 +32,56 @@ impl PalettePicker {
             let (red, green, blue) = palette_data.borrow_mut().pal[idx].to_tuple();
             picker.emit_by_name::<()>("set-color", &[&red, &green, &blue]);
         }));
+    }
+
+    pub fn setup_actions(&self, palette_data: Rc<RefCell<Palette>>, parent: Window) {
+        // open file
+        let action_open = ActionEntry::builder("open")
+            .activate(
+                clone!(@weak self as this, @weak palette_data, @weak parent => move |_, _, _| {
+                    let dialog = FileChooserDialog::new(
+                        Some("Open Palette File"),
+                        Some(&parent),
+                        FileChooserAction::Open,
+                        &[("Open", ResponseType::Ok), ("Cancel", ResponseType::Cancel)],
+                    );
+
+                    let bin_filter = FileFilter::new();
+                    bin_filter.set_name(Some("Binary Files (.bin)"));
+                    bin_filter.add_suffix("bin");
+                    let all_filter = FileFilter::new();
+                    all_filter.set_name(Some("All Files"));
+                    all_filter.add_pattern("*");
+                    dialog.add_filter(&bin_filter);
+                    dialog.add_filter(&all_filter);
+
+                    dialog.connect_response(move |d: &FileChooserDialog, response: ResponseType| {
+                        if response == ResponseType::Ok {
+                            let file = d.file().expect("Couldn't get file");
+                            let filename = file.path().expect("Couldn't get file path");
+                            match Palette::from_path(&filename) {
+                                Err(e) => {
+                                    eprintln!("Error: {}", e);
+                                }
+                                Ok(p) => {
+                                    *palette_data.borrow_mut() = p;
+                                    this.imp().palette_drawing.queue_draw();
+                                    this.notify_color_idx(); // trigger color picker redraw
+                                }
+                            };
+                        }
+
+                        d.close();
+                    });
+
+                    dialog.show();
+                }),
+            )
+            .build();
+
+        let actions = SimpleActionGroup::new();
+        actions.add_action_entries([action_open]);
+        parent.insert_action_group("palette", Some(&actions));
     }
 
     pub fn setup_change_color<O: ObjectExt>(&self, other: O, palette_data: Rc<RefCell<Palette>>) {
