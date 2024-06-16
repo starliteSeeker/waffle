@@ -83,7 +83,7 @@ impl ObjectImpl for PalettePicker {
         static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
         SIGNALS.get_or_init(|| {
             vec![Signal::builder("set-color")
-                .param_types([u32::static_type(), u32::static_type(), u32::static_type()])
+                .param_types([u8::static_type(), u8::static_type(), u8::static_type()])
                 .build()]
         })
     }

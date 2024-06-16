@@ -88,7 +88,7 @@ impl PalettePicker {
         other.connect_closure(
             "change-color",
             false,
-            closure_local!(@weak-allow-none self as this, @weak-allow-none palette_data => move |_: O, red: u32, green: u32, blue: u32| {
+            closure_local!(@weak-allow-none self as this, @weak-allow-none palette_data => move |_: O, red: u8, green: u8, blue: u8| {
                 // update color at color_idx
                 let Some(this) = this else {return};
                 let Some(palette_data) = palette_data else {return};

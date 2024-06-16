@@ -29,11 +29,11 @@ pub struct ColorPicker {
     pub blue_adj: TemplateChild<Adjustment>,
 
     #[property(get, set)]
-    red: Cell<u32>,
+    red: Cell<u8>,
     #[property(get, set)]
-    green: Cell<u32>,
+    green: Cell<u8>,
     #[property(get, set)]
-    blue: Cell<u32>,
+    blue: Cell<u8>,
 }
 
 // The central trait for subclassing a GObject
@@ -78,7 +78,7 @@ impl ObjectImpl for ColorPicker {
         static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
         SIGNALS.get_or_init(|| {
             vec![Signal::builder("change-color")
-                .param_types([u32::static_type(), u32::static_type(), u32::static_type()])
+                .param_types([u8::static_type(), u8::static_type(), u8::static_type()])
                 .build()]
         })
     }
@@ -112,7 +112,7 @@ impl ColorPicker {
                 @default-return (false.into()), move |_, _, val| {
                 this.color_square.queue_draw();
 
-                obj.emit_by_name::<()>("change-color", &[&(val.round() as u32), &this.green.get(), &this.blue.get()]);
+                obj.emit_by_name::<()>("change-color", &[&(val.round() as u8), &this.green.get(), &this.blue.get()]);
                 false.into()
             }));
         self.green_slider
@@ -120,7 +120,7 @@ impl ColorPicker {
                 @default-return (false.into()), move |_, _, val| {
                 this.color_square.queue_draw();
 
-                obj.emit_by_name::<()>("change-color", &[&this.red.get(), &(val.round() as u32), &this.blue.get()]);
+                obj.emit_by_name::<()>("change-color", &[&this.red.get(), &(val.round() as u8), &this.blue.get()]);
                 false.into()
             }));
         self.blue_slider
@@ -128,7 +128,7 @@ impl ColorPicker {
                 @default-return (false.into()), move |_, _, val| {
                 this.color_square.queue_draw();
 
-                obj.emit_by_name::<()>("change-color", &[&this.red.get(), &this.green.get(), &(val.round() as u32)]);
+                obj.emit_by_name::<()>("change-color", &[&this.red.get(), &this.green.get(), &(val.round() as u8)]);
                 false.into()
             }));
     }

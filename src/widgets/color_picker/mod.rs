@@ -16,7 +16,7 @@ impl ColorPicker {
         other.connect_closure(
             "set-color",
             false,
-            closure_local!(@weak-allow-none self as this => move |_: O, mut red: u32, mut green: u32, mut blue: u32| {
+            closure_local!(@weak-allow-none self as this => move |_: O, mut red: u8, mut green: u8, mut blue: u8| {
                 let Some(this) = this else {return};
                 red = red.min(31);
                 green = green.min(31);

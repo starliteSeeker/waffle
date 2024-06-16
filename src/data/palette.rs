@@ -18,6 +18,10 @@ impl Default for Palette {
                     unsafe { MaybeUninit::uninit().assume_init() };
 
                 // some random coloful palette
+                for i in 0..256 {
+                    data[i].write(Color::new((i as u8 / 16) * 2, (i as u8 % 16) * 2, 0));
+                }
+                /*
                 for i in 0..4 {
                     for j in 0..16 {
                         let ii = i as u32;
@@ -54,6 +58,7 @@ impl Default for Palette {
                         data[i * 16 + j].write(Color::new(31 * jj / 15, 0, ii * 8 * jj / 15));
                     }
                 }
+                */
                 unsafe { mem::transmute::<_, [Color; 256]>(data) }
             },
         }
@@ -82,7 +87,7 @@ impl Palette {
                     let r = lo & 0b00011111;
                     let g = ((lo & 0b11100000) >> 5) | ((hi & 0b00000011) << 3);
                     let b = (hi & 0b01111100) >> 2;
-                    data[i].write(Color::new(r as u32, g as u32, b as u32));
+                    data[i].write(Color::new(r, g, b));
                 }
 
                 unsafe { mem::transmute::<_, [Color; 256]>(data) }

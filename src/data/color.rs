@@ -1,12 +1,12 @@
 #[derive(Debug, Copy, Clone, Default)]
 pub struct Color {
-    red: u32,
-    green: u32,
-    blue: u32,
+    red: u8,
+    green: u8,
+    blue: u8,
 }
 
 impl Color {
-    pub fn new(r: u32, g: u32, b: u32) -> Self {
+    pub fn new(r: u8, g: u8, b: u8) -> Self {
         // clamp rgb values to be between 0 and 31 (0b11111)
         Color {
             red: r.min(31),
@@ -15,7 +15,7 @@ impl Color {
         }
     }
 
-    pub fn to_tuple(&self) -> (u32, u32, u32) {
+    pub fn to_tuple(&self) -> (u8, u8, u8) {
         (self.red, self.green, self.blue)
     }
 
