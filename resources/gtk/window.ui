@@ -5,9 +5,38 @@
     <property name="title">Waffle</property>
     <child>
       <object class="GtkBox">
-        <property name="orientation">vertical</property>
+        <property name="orientation">horizontal</property>
         <child>
-          <object class="PalettePicker" id="palette_picker">
+          <object class="GtkBox">
+            <property name="orientation">vertical</property>
+            <child>
+              <object class="PalettePicker" id="palette_picker">
+                <property name="margin-start">10</property>
+                <property name="margin-end">10</property>
+                <property name="margin-top">10</property>
+                <property name="margin-bottom">10</property>
+              </object>
+            </child>
+            <child>
+              <object class="BGR555ColorPicker" id="color_picker">
+                <property name="margin-start">10</property>
+                <property name="margin-end">10</property>
+                <property name="margin-top">10</property>
+                <property name="margin-bottom">10</property>
+              </object>
+            </child>
+            <child>
+              <object class="TilePicker" id="tile_picker">
+              </object>
+            </child>
+            <child>
+              <object class="GtkButton" id="test_button">
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkSeparator">
             <property name="margin-start">10</property>
             <property name="margin-end">10</property>
             <property name="margin-top">10</property>
@@ -15,15 +44,7 @@
           </object>
         </child>
         <child>
-          <object class="BGR555ColorPicker" id="color_picker">
-            <property name="margin-start">10</property>
-            <property name="margin-end">10</property>
-            <property name="margin-top">10</property>
-            <property name="margin-bottom">10</property>
-          </object>
-        </child>
-        <child>
-          <object class="GtkButton" id="test_button">
+          <object class="TilemapEditor" id="tilemap_editor">
           </object>
         </child>
       </object>

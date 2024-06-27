@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="TilePicker" parent="GtkBox">
+    <property name="orientation">vertical</property>
+    <child>
+      <object class="GtkBox">
+        <property name="margin-start">10</property>
+        <property name="margin-end">10</property>
+        <property name="margin-top">10</property>
+        <property name="margin-bottom">10</property>
+        <property name="orientation">vertical</property>
+        <child>
+          <object class="GtkBox">
+            <property name="orientation">horizontal</property>
+            <child>
+              <object class="GtkDrawingArea" id="tile_drawing">
+                <property name="content-width">384</property>
+                <property name="content-height">384</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkBox">
+                <property name="orientation">vertical</property>
+                <child>
+                  <object class="GtkButton" id="tile_prev">
+                    <property name="vexpand">true</property>
+                    <property name="icon-name">go-up-symbolic</property>
+                    <property name="tooltip-text">Scroll up</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton" id="tile_next">
+                    <property name="vexpand">true</property>
+                    <property name="icon-name">go-down-symbolic</property>
+                    <property name="tooltip-text">Scroll down</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkActionBar">
+            <child type="start">
+              <object class="GtkButton" id="tile_open_btn">
+                <property name="label">Open</property>
+                <property name="icon-name">view-refresh-symbolic</property>
+                <property name="tooltip-text">Reload tileset file</property>
+                <property name="action-name">tiles.reload</property>
+              </object>
+            </child>
+            <child type="start">
+              <object class="GtkDropDown" id="tile_size_select">
+                <property name="tooltip-text">Set tile size</property>
+                <property name="model">
+                  <object class="GtkStringList" id="tile_size_items">
+                    <!-- items populated in code -->
+                  </object>
+                </property>
+              </object>
+            </child>
+            <child type="end">
+              <object class="GtkLabel" id="tile_idx_label">
+                <property name="label">$?? / $??</property>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+  </template>
+</interface>

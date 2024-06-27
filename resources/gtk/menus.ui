@@ -2,11 +2,34 @@
 <interface>
   <menu id="menubar">
     <submenu>
-      <attribute name="label">_File</attribute>
-      <item>
-        <attribute name="label">_Quit</attribute>
-        <attribute name="action">win.close</attribute>
-      </item>
+      <attribute name="label">File</attribute>
+      <section>
+        <attribute name="label">Palette</attribute>
+        <item>
+          <attribute name="label">Open</attribute>
+          <attribute name="action">palette.open</attribute>
+        </item>
+      </section>
+      <section>
+        <attribute name="label">Tileset</attribute>
+        <item>
+          <attribute name="label">Open</attribute>
+          <attribute name="action">tiles.open</attribute>
+        </item>
+      </section>
+      <section>
+        <attribute name="label">Tilemap</attribute>
+        <item>
+          <attribute name="label">Dummy</attribute>
+          <attribute name="action">dummy.open</attribute>
+        </item>
+      </section>
+      <section>
+        <item>
+          <attribute name="label">Quit</attribute>
+          <attribute name="action">win.close</attribute>
+        </item>
+      </section>
     </submenu>
   </menu>
 </interface>

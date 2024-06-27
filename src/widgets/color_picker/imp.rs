@@ -45,7 +45,6 @@ impl ObjectSubclass for ColorPicker {
 
     fn class_init(klass: &mut Self::Class) {
         klass.bind_template();
-        // klass.bind_template_callbacks();
     }
 
     fn instance_init(obj: &InitializingObject<Self>) {
@@ -77,7 +76,8 @@ impl ObjectImpl for ColorPicker {
     fn signals() -> &'static [Signal] {
         static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
         SIGNALS.get_or_init(|| {
-            vec![Signal::builder("change-color")
+            // parameter: red, green, blue
+            vec![Signal::builder("color-changed")
                 .param_types([u8::static_type(), u8::static_type(), u8::static_type()])
                 .build()]
         })
@@ -104,31 +104,32 @@ impl ColorPicker {
             .build();
     }
 
-    // whenever slider value changes, redraw color square and emit signal "color-change"
     fn setup_slider_change(&self) {
         let obj = self.obj();
         self.red_slider
-            .connect_change_value(clone!(@weak self as this, @weak obj =>
+            .connect_change_value(clone!(@weak self as this =>
                 @default-return (false.into()), move |_, _, val| {
-                this.color_square.queue_draw();
-
-                obj.emit_by_name::<()>("change-color", &[&(val.round() as u8), &this.green.get(), &this.blue.get()]);
+                let obj = this.obj();
+                if this.red.get() != val.round() as u8 {
+                    obj.emit_by_name::<()>("color-changed", &[&(val.round() as u8), &this.green.get(), &this.blue.get()]);
+                }
+                // propogate signal to other handlers
                 false.into()
             }));
         self.green_slider
             .connect_change_value(clone!(@weak self as this, @weak obj =>
                 @default-return (false.into()), move |_, _, val| {
-                this.color_square.queue_draw();
-
-                obj.emit_by_name::<()>("change-color", &[&this.red.get(), &(val.round() as u8), &this.blue.get()]);
+                if this.green.get() != val.round() as u8 {
+                    obj.emit_by_name::<()>("color-changed", &[&this.red.get(), &(val.round() as u8), &this.blue.get()]);
+                }
                 false.into()
             }));
         self.blue_slider
             .connect_change_value(clone!(@weak self as this, @weak obj =>
                 @default-return (false.into()), move |_, _, val| {
-                this.color_square.queue_draw();
-
-                obj.emit_by_name::<()>("change-color", &[&this.red.get(), &this.green.get(), &(val.round() as u8)]);
+                if this.blue.get() != val.round() as u8 {
+                    obj.emit_by_name::<()>("color-changed", &[&this.red.get(), &this.green.get(), &(val.round() as u8)]);
+                }
                 false.into()
             }));
     }

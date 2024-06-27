@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Cell, OnceCell, RefCell};
 use std::rc::Rc;
 use std::sync::OnceLock;
 
@@ -11,8 +11,11 @@ use gtk::Button;
 use gtk::{glib, CompositeTemplate};
 
 use crate::data::palette::Palette;
+use crate::data::tiles::Tileset;
 use crate::widgets::color_picker::ColorPicker;
 use crate::widgets::palette_picker::PalettePicker;
+use crate::widgets::tile_picker::TilePicker;
+use crate::widgets::tilemap_editor::TilemapEditor;
 
 #[derive(CompositeTemplate, Default)]
 #[template(resource = "/com/example/waffle/window.ui")]
@@ -23,8 +26,14 @@ pub struct Window {
     pub color_picker: TemplateChild<ColorPicker>,
     #[template_child]
     pub palette_picker: TemplateChild<PalettePicker>,
+    #[template_child]
+    pub tilemap_editor: TemplateChild<TilemapEditor>,
+    #[template_child]
+    pub tile_picker: TemplateChild<TilePicker>,
 
     pub palette_data: Rc<RefCell<Palette>>,
+    pub tile_data: Rc<RefCell<Tileset>>,
+    pub map_data: OnceCell<Rc<Cell<u8>>>,
 }
 
 // The central trait for subclassing a GObject
@@ -37,6 +46,7 @@ impl ObjectSubclass for Window {
     fn class_init(klass: &mut Self::Class) {
         ColorPicker::ensure_type();
         PalettePicker::ensure_type();
+        TilemapEditor::ensure_type();
 
         klass.bind_template();
         klass.install_action("win.close", None, |window, _, _| window.close());
@@ -52,34 +62,33 @@ impl ObjectImpl for Window {
     fn constructed(&self) {
         self.parent_constructed();
 
-        // setup between color picker and palette picker
-        // link color picker to selected color_idx ...
-        self.palette_picker
-            .setup_change_color(self.color_picker.clone(), self.palette_data.clone());
-        // ... and the other way around
+        self.palette_picker.setup_all(
+            self.palette_data.clone(),
+            self.obj().clone(),
+            self.color_picker.clone(),
+        );
         self.color_picker
-            .setup_set_color(self.palette_picker.clone());
-        self.palette_picker
-            .setup_emit_set_color(self.palette_data.clone());
+            .setup_all(self.palette_picker.clone(), self.palette_data.clone());
 
-        // setup palette picker
-        self.palette_picker
-            .setup_palette_data(self.palette_data.clone());
-        self.palette_picker
-            .setup_actions(self.palette_data.clone(), self.obj().clone());
+        self.tile_picker.setup_all(
+            Some(self.obj().clone()),
+            self.palette_data.clone(),
+            self.tile_data.clone(),
+            self.palette_picker.clone(),
+        );
 
-        self.test_button.set_action_name(Some("palette.test"));
+        // setup tilemap editor
+        let _ = self
+            .map_data
+            .set(self.tilemap_editor.imp().map_data.clone());
 
-        /*
+        // self.test_button.set_action_name(Some("palette.test"));
+
+        let m = self.map_data.get().expect("map_data not initialized");
         self.test_button
-            .connect_clicked(clone!(@weak self as this => move |_| {
-                let red = 1_u32;
-                let green = 2_u32;
-                let blue = 3_u32;
-                this.obj().emit_by_name::<()>("set-color",
-                    &[&red.to_value(), &green.to_value(), &blue.to_value()]);
+            .connect_clicked(clone!(@weak m => move |_| {
+                m.set(m.get() + 1);
             }));
-        */
     }
 
     fn signals() -> &'static [Signal] {
