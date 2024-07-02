@@ -1,4 +1,4 @@
-use std::cell::{Cell, OnceCell, RefCell};
+use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::OnceLock;
 
@@ -10,6 +10,7 @@ use gtk::subclass::prelude::*;
 use gtk::Button;
 use gtk::{glib, CompositeTemplate};
 
+use crate::data::list_items::BGMode;
 use crate::data::palette::Palette;
 use crate::data::tiles::Tileset;
 use crate::widgets::color_picker::ColorPicker;
@@ -33,7 +34,8 @@ pub struct Window {
 
     pub palette_data: Rc<RefCell<Palette>>,
     pub tile_data: Rc<RefCell<Tileset>>,
-    pub map_data: OnceCell<Rc<Cell<u8>>>,
+
+    pub bg_mode: Rc<RefCell<BGMode>>,
 }
 
 // The central trait for subclassing a GObject
@@ -78,17 +80,14 @@ impl ObjectImpl for Window {
         );
 
         // setup tilemap editor
-        let _ = self
-            .map_data
-            .set(self.tilemap_editor.imp().map_data.clone());
+        self.tilemap_editor.setup_all(
+            self.palette_data.clone(),
+            self.tile_data.clone(),
+            self.palette_picker.clone(),
+            self.tile_picker.clone(),
+        );
 
         // self.test_button.set_action_name(Some("palette.test"));
-
-        let m = self.map_data.get().expect("map_data not initialized");
-        self.test_button
-            .connect_clicked(clone!(@weak m => move |_| {
-                m.set(m.get() + 1);
-            }));
     }
 
     fn signals() -> &'static [Signal] {

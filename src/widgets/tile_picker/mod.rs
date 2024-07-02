@@ -136,7 +136,7 @@ impl TilePicker {
         palette_obj.connect_closure(
             "palette-idx-changed",
             false,
-            closure_local!(@weak-allow-none self as this => move |_: P| {
+            closure_local!(@weak-allow-none self as this => move |_: P, _: u8| {
                 let Some(this) = this else {return};
                 this.imp().tile_drawing.queue_draw();
             }),
@@ -156,7 +156,7 @@ impl TilePicker {
             false,
             closure_local!(@weak-allow-none tile_data => move |this: Self| {
                 let Some(tile_data) = tile_data else {return};
-                this.imp().tile_idx_label.set_label(&format!("${:03X} / ${:03X}", tile_data.borrow().get_idx(), tile_data.borrow().get_size()));
+                this.imp().tile_idx_label.set_label(&format!("${:03X} / ${:03X}", tile_data.borrow().get_idx(), tile_data.borrow().get_size() - 1));
             }),
         );
 
@@ -189,12 +189,8 @@ impl TilePicker {
                 let _ = cr.paint();
 
                 let tile_w = w as f64 / 16.0;
-                let pxl_w = tile_w / 8.0;
 
                 // 16 8x8 tiles per row
-                // TODO: assume 2bpp for now
-                // collect pixels with same color, then draw the pixels together
-                let mut rects = vec![Vec::new(); 4];
                 let row_offset = *row_offset.borrow();
                 let tiles = &tile_data.borrow().tiles;
                 for i in 0..256 {
@@ -202,25 +198,12 @@ impl TilePicker {
                     if ti >= tiles.len() {
                         break;
                     }
-                    // top left corner of tile
-                    let x_off = (i % 16) as f64 * tile_w;
-                    let y_off = (i / 16) as f64 * tile_w;
-                    let chr = tiles[ti].chr;
-                    for (j, c) in chr.into_iter().enumerate() {
-                        // top left corner of pixel
-                        let xx_off = (j % 8) as f64 * pxl_w;
-                        let yy_off = (j / 8) as f64 * pxl_w;
-                        rects[c as usize].push((x_off + xx_off, y_off + yy_off));
-                    }
-                }
-
-                for (i, v) in rects.into_iter().enumerate() {
-                    for (x, y) in v {
-                        cr.rectangle(x, y, pxl_w, pxl_w);
-                    }
-                    let (r, g, b) = palette_data.borrow().get_relative(i as u8).to_cairo();
-                    cr.set_source_rgb(r, g, b);
-                    let _ = cr.fill();
+                    let x_offset = (i % 16) as f64 * tile_w;
+                    let y_offset = (i / 16) as f64 * tile_w;
+                    let _ = cr.save();
+                    cr.translate(x_offset, y_offset);
+                    tiles[ti].draw(cr, palette_data.clone(), None);
+                    let _ = cr.restore();
                 }
 
                 // draw selected tile outline

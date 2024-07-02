@@ -52,7 +52,7 @@ impl PalettePicker {
                 this.emit_by_name::<()>("color-idx-changed", &[&new_idx, &r, &g, &b]);
             }
             if new_idx / 4 != old_idx / 4 {
-                this.emit_by_name::<()>("palette-idx-changed", &[]);
+                this.emit_by_name::<()>("palette-idx-changed", &[&(new_idx - new_idx % 4)]);
             }
         }));
         self.imp().palette_scroll.add_controller(gesture);

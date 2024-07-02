@@ -1,5 +1,9 @@
+use crate::data::palette::Palette;
+use std::cell::RefCell;
+use std::rc::Rc;
+
 pub struct Tile {
-    pub chr: [u8; 64],
+    chr: [u8; 64],
 }
 
 impl Tile {
@@ -19,6 +23,39 @@ impl Tile {
             chr[i] |= ((s[2 * a + 1] >> (7 - b)) & 0b1) << 1; // bit 1
         }
         Some(Tile { chr })
+    }
+
+    pub fn draw(
+        &self,
+        cr: &gtk::cairo::Context,
+        palette_data: Rc<RefCell<Palette>>,
+        palette_offset: Option<u8>,
+    ) {
+        let pxl_w = crate::TILE_W / 8.0;
+        // TODO: assume 2bpp for now
+        // collect pixels with same color, then draw the pixels together
+        let mut rects = vec![Vec::new(); 4];
+
+        // (0, 0) as top left corner of tile
+        for (j, c) in self.chr.into_iter().enumerate() {
+            // top left corner of pixel
+            let x_off = (j % 8) as f64 * pxl_w;
+            let y_off = (j / 8) as f64 * pxl_w;
+            rects[c as usize].push((x_off, y_off));
+        }
+
+        for (i, v) in rects.into_iter().enumerate() {
+            for (x, y) in v {
+                cr.rectangle(x, y, pxl_w, pxl_w);
+            }
+            let (r, g, b) = if let Some(idx) = palette_offset {
+                palette_data.borrow().pal[idx as usize + i].to_cairo()
+            } else {
+                palette_data.borrow().get_relative(i as u8).to_cairo()
+            };
+            cr.set_source_rgb(r, g, b);
+            let _ = cr.fill();
+        }
     }
 }
 
@@ -45,6 +82,12 @@ impl Tileset {
     pub fn from_path(path: &std::path::PathBuf) -> std::io::Result<Self> {
         let mut content = std::fs::read(path)?;
         let len = content.len();
+        if len == 0 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "file has length 0",
+            ));
+        }
         let align = 8 * 8 * 2 / 8;
         if len % align != 0 {
             eprintln!("file does not align with {align} bytes, pad with 0");

@@ -3,12 +3,49 @@
   <template class="TilemapEditor" parent="GtkBox">
     <property name="orientation">vertical</property>
     <child>
-      <object class="GtkLabel" id="map_lbl">
-        <property name="label">map</property>
+      <object class="GtkScrolledWindow" id="tilemap_scroll">
+        <property name="propagate-natural-width">true</property>
+        <property name="propagate-natural-height">true</property>
+        <property name="max-content-width">768</property>
+        <property name="max-content-height">768</property>
+        <child>
+          <object class="GtkDrawingArea" id="tilemap_drawing">
+            <property name="content-width">768</property>
+            <property name="content-height">768</property>
+          </object>
+        </child>
       </object>
     </child>
     <child>
-      <object class="GtkButton" id="map_btn">
+      <object class="GtkActionBar">
+        <child type="start">
+          <object class="GtkButton" id="tilemap_reload_btn">
+            <property name="label">Reload</property>
+            <property name="icon-name">view-refresh-symbolic</property>
+            <property name="tooltip-text">Reload tilemap file</property>
+            <property name="action-name">tilemap.reload</property>
+          </object>
+        </child>
+        <child type="start">
+          <object class="GtkDropDown" id="mode_select">
+            <property name="tooltip-text">Set background mode</property>
+            <property name="model">
+              <object class="GtkStringList" id="mode_list">
+                <!-- items populated in code -->
+              </object>
+            </property>
+          </object>
+        </child>
+        <child type="start">
+          <object class="GtkDropDown" id="zoom_select">
+            <property name="tooltip-text">Set zoom level</property>
+            <property name="model">
+              <object class="GtkStringList" id="zoom_level_list">
+                <!-- items populated in code -->
+              </object>
+            </property>
+          </object>
+        </child>
       </object>
     </child>
   </template>

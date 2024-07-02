@@ -11,7 +11,6 @@ use gtk::subclass::prelude::*;
 use gtk::{Button, CompositeTemplate, DrawingArea, DropDown, Label, StringList};
 
 use crate::data::list_items::TileSize;
-use crate::data::tiles::Tileset;
 
 #[derive(CompositeTemplate, Default)]
 #[template(resource = "/com/example/waffle/tile_picker.ui")]

@@ -1,55 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <template class="PalettePicker" parent="GtkBox">
+    <property name="margin-start">10</property>
+    <property name="margin-end">10</property>
+    <property name="margin-top">10</property>
+    <property name="margin-bottom">10</property>
     <property name="orientation">vertical</property>
+    <property name="halign">center</property>
     <child>
-      <object class="GtkBox">
-        <property name="margin-start">10</property>
-        <property name="margin-end">10</property>
-        <property name="margin-top">10</property>
-        <property name="margin-bottom">10</property>
-        <property name="orientation">vertical</property>
+      <object class="GtkScrolledWindow" id="palette_scroll">
+        <property name="propagate-natural-width">true</property>
+        <property name="min-content-height">192</property>
+        <property name="max-content-height">192</property>
         <child>
-          <object class="GtkScrolledWindow" id="palette_scroll">
-            <property name="propagate-natural-width">true</property>
-            <property name="min-content-height">192</property>
-            <property name="max-content-height">192</property>
-            <child>
-              <object class="GtkDrawingArea" id="palette_drawing">
-                <property name="content-width">384</property>
-                <property name="content-height">384</property>
-              </object>
-            </child>
+          <object class="GtkDrawingArea" id="palette_drawing">
+            <property name="content-width">384</property>
+            <property name="content-height">384</property>
           </object>
         </child>
-        <child>
-          <object class="GtkActionBar">
-            <child type="start">
-              <object class="GtkButton" id="palette_open_btn">
-                <property name="label">Open</property>
-                <property name="icon-name">view-refresh-symbolic</property>
-                <property name="tooltip-text">Reload palette file</property>
-                <property name="action-name">palette.reload</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkActionBar">
+        <child type="start">
+          <object class="GtkButton" id="palette_open_btn">
+            <property name="label">Open</property>
+            <property name="icon-name">view-refresh-symbolic</property>
+            <property name="tooltip-text">Reload palette file</property>
+            <property name="action-name">palette.reload</property>
+          </object>
+        </child>
+        <child type="start">
+          <object class="GtkDropDown" id="bpp_select">
+            <property name="tooltip-text">Set bits per pixel</property>
+            <property name="model">
+              <object class="GtkStringList">
+                <items>
+                  <item>2bpp</item>
+                  <item>4bpp</item>
+                </items>
               </object>
-            </child>
-            <child type="start">
-              <object class="GtkDropDown" id="bpp_select">
-                <property name="tooltip-text">Set bits per pixel</property>
-                <property name="model">
-                  <object class="GtkStringList">
-                    <items>
-                      <item>2bpp</item>
-                      <item>4bpp</item>
-                    </items>
-                  </object>
-                </property>
-              </object>
-            </child>
-            <child type="end">
-              <object class="GtkLabel" id="color_idx_label">
-                <property name="label">$?? / $FF</property>
-              </object>
-            </child>
+            </property>
+          </object>
+        </child>
+        <child type="end">
+          <object class="GtkLabel" id="color_idx_label">
+            <property name="label">$?? / $FF</property>
           </object>
         </child>
       </object>

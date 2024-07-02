@@ -8,6 +8,9 @@ use widgets::window::Window;
 
 const APP_ID: &str = "com.example.waffle";
 
+// default width of an 8x8 tile
+const TILE_W: f64 = 24.0;
+
 fn main() -> glib::ExitCode {
     // Register and include resources
     gio::resources_register_include!("waffle.gresource").expect("Failed to register resources.");
