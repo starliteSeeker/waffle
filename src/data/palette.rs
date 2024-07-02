@@ -21,46 +21,14 @@ impl Default for Palette {
 
                 // some random coloful palette
                 for i in 0..256 {
-                    data[i].write(Color::new((i as u8 / 16) * 2, (i as u8 % 16) * 2, 0));
+                    let r = i as u8 & 0b00001111;
+                    let g = (i as u8 & 0b01110000) >> 4;
+                    let b = if i & 0x80 != 0 { 0b11111 } else { 0b0 };
+                    data[i].write(Color::from_bytes([
+                        r << 1 | (g & 0b1) << 7,
+                        g >> 1 | b << 2,
+                    ]));
                 }
-                /*
-                for i in 0..4 {
-                    for j in 0..16 {
-                        let ii = i as u32;
-                        let jj = j as u32;
-                        data[i * 16 + j].write(Color::new(0, 31 * jj / 15, ii * 8 * jj / 15));
-                    }
-                }
-                for i in 4..8 {
-                    for j in 0..16 {
-                        let ii = i as u32 - 4;
-                        let jj = j as u32;
-                        data[i * 16 + j].write(Color::new(
-                            0,
-                            (32 - ii * 8) * jj / 15,
-                            31 * jj / 15,
-                        ));
-                    }
-                }
-                for i in 8..12 {
-                    for j in 0..16 {
-                        let ii = i as u32 - 8;
-                        let jj = j as u32;
-                        data[i * 16 + j].write(Color::new(
-                            31 * jj / 15,
-                            (32 - ii * 8) * jj / 15,
-                            0,
-                        ));
-                    }
-                }
-                for i in 12..16 {
-                    for j in 0..16 {
-                        let ii = i as u32 - 12;
-                        let jj = j as u32;
-                        data[i * 16 + j].write(Color::new(31 * jj / 15, 0, ii * 8 * jj / 15));
-                    }
-                }
-                */
                 unsafe { mem::transmute::<_, [Color; 256]>(data) }
             },
         }
@@ -87,10 +55,7 @@ impl Palette {
                     unsafe { MaybeUninit::uninit().assume_init() };
 
                 for (i, (lo, hi)) in content.into_iter().tuples().enumerate() {
-                    let r = lo & 0b00011111;
-                    let g = ((lo & 0b11100000) >> 5) | ((hi & 0b00000011) << 3);
-                    let b = (hi & 0b01111100) >> 2;
-                    data[i].write(Color::new(r, g, b));
+                    data[i].write(Color::from_bytes([lo, hi]));
                 }
 
                 unsafe { mem::transmute::<_, [Color; 256]>(data) }
@@ -103,12 +68,15 @@ impl Palette {
     }
 
     // return true if new value is different
-    pub fn set_curr(&mut self, c: Color) -> bool {
+    pub fn set_curr(&mut self, r: u8, g: u8, b: u8) -> bool {
         let prev_c = self.pal[self.sel_idx as usize];
-        if prev_c == c {
+        if prev_c.red() == r && prev_c.green() == g && prev_c.blue() == b {
             return false;
         }
-        self.pal[self.sel_idx as usize] = c;
+        self.pal[self.sel_idx as usize] = Color::new()
+            .with_red(r.min(31))
+            .with_green(g.min(31))
+            .with_blue(b.min(31));
         return true;
     }
 

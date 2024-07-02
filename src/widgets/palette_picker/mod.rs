@@ -153,7 +153,7 @@ impl PalettePicker {
                 // update color at color_idx
                 let Some(this) = this else {return};
                 let Some(palette_data) = palette_data else {return};
-                if palette_data.borrow_mut().set_curr(Color::new(red, green, blue)) {
+                if palette_data.borrow_mut().set_curr(red, green, blue) {
                     this.emit_by_name::<()>("palette-changed", &[]);
                 }
             }),
