@@ -16,8 +16,6 @@ use crate::data::palette::Palette;
 use crate::widgets::window::Window;
 use crate::TILE_W;
 
-const PAL_TILE_WIDTH: f64 = 24.0;
-
 glib::wrapper! {
     pub struct PalettePicker(ObjectSubclass<imp::PalettePicker>)
         @extends gtk::Widget,
@@ -186,7 +184,7 @@ impl PalettePicker {
     fn setup_draw(&self, palette_data: Rc<RefCell<Palette>>) {
         let imp = self.imp();
         imp.palette_drawing.set_draw_func(
-            clone!(@weak palette_data, @weak imp => move |_, cr, _, _| {
+            clone!(@weak palette_data, @weak imp => move |_, cr, x, y| {
                 // default color
                 cr.set_source_rgb(1.0, 0.0, 1.0);
                 let _ = cr.paint();
@@ -197,9 +195,9 @@ impl PalettePicker {
                 cr.set_line_width(1.0);
                 for i in 0..16 {
                     for j in 0..16 {
-                        let x_offset = j as f64 * PAL_TILE_WIDTH;
-                        let y_offset = i as f64 * PAL_TILE_WIDTH;
-                        cr.rectangle(x_offset, y_offset, PAL_TILE_WIDTH, PAL_TILE_WIDTH);
+                        let x_offset = j as f64 * TILE_W;
+                        let y_offset = i as f64 * TILE_W;
+                        cr.rectangle(x_offset, y_offset, TILE_W, TILE_W);
                         let (red, green, blue) = pal[i * 16 + j].to_cairo();
                         cr.set_source_rgb(red, green, blue);
                         let _ = cr.fill();
@@ -210,7 +208,7 @@ impl PalettePicker {
                             Bpp::Four => j == 0,
                         };
                         if is_transparent {
-                            cr.arc(x_offset + 12.0, y_offset + 12.0, 3.0, 0.0 , 2.0 * std::f64::consts::PI);
+                            cr.arc(x_offset + TILE_W / 2.0, y_offset + TILE_W / 2.0, 3.0, 0.0 , 2.0 * std::f64::consts::PI);
                             cr.set_source_rgb(0.8, 0.8, 0.8);
                             let _ = cr.fill_preserve();
                             cr.set_source_rgb(0.0, 0.0, 0.0);
@@ -219,6 +217,19 @@ impl PalettePicker {
 
                     }
                 }
+
+                // dim sections of palette not used in current bg_mode
+                let x_offset = 0.0;
+                let y_offset = (bg_mode.palette_offset() / 16) as f64 * TILE_W;
+                let width = 16.0 * TILE_W;
+                let height = (bg_mode.bpp().to_val() * 8 / 16) as f64 * TILE_W;
+                cr.rectangle(x_offset, y_offset, width, height);
+                cr.rectangle(0.0, 0.0, x as f64, y as f64);
+                let _ = cr.save();
+                cr.set_fill_rule(gtk::cairo::FillRule::EvenOdd);
+                cr.set_source_rgba(0.0, 0.0, 0.0, 0.7);
+                let _ = cr.fill();
+                let _ = cr.restore();
 
                 // draw current palette group outline
                 let pal_start_idx = bg_mode.palette_offset() + bg_mode.bpp().to_val() * palette_data.borrow().pal_sel;
