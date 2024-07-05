@@ -10,7 +10,7 @@ use gtk::subclass::prelude::*;
 use gtk::{gio, glib};
 use gtk::{FileChooserAction, FileChooserDialog, FileFilter, GestureClick, ResponseType, Window};
 
-use crate::data::list_items::TileSize;
+use crate::data::list_items::{BGMode, TileSize};
 use crate::data::palette::Palette;
 use crate::data::tiles::Tileset;
 
@@ -22,17 +22,19 @@ glib::wrapper! {
 }
 
 impl TilePicker {
-    pub fn setup_all<S: WidgetExt + IsA<Window>, P: WidgetExt>(
+    pub fn setup_all<S: WidgetExt + IsA<Window>, P: WidgetExt, M: WidgetExt>(
         &self,
         dialog_scope: Option<S>,
         pal: Rc<RefCell<Palette>>,
         tile_data: Rc<RefCell<Tileset>>,
         palette_obj: P,
+        bg_mode: Rc<RefCell<BGMode>>,
+        map_obj: M,
     ) {
         self.setup_gesture(tile_data.clone());
         self.setup_actions(dialog_scope, tile_data.clone());
-        self.setup_signal_connection(tile_data.clone(), palette_obj.clone());
-        self.setup_draw(pal, tile_data);
+        self.setup_signal_connection(tile_data.clone(), palette_obj.clone(), map_obj);
+        self.setup_draw(pal, tile_data, bg_mode);
     }
 
     fn setup_gesture(&self, tile_data: Rc<RefCell<Tileset>>) {
@@ -113,10 +115,11 @@ impl TilePicker {
         }
     }
 
-    fn setup_signal_connection<P: WidgetExt>(
+    fn setup_signal_connection<P: WidgetExt, M: WidgetExt>(
         &self,
         tile_data: Rc<RefCell<Tileset>>,
         palette_obj: P,
+        map_obj: M,
     ) {
         // redraw self
         self.connect_closure(
@@ -145,6 +148,15 @@ impl TilePicker {
             "palette-changed",
             false,
             closure_local!(@weak-allow-none self as this => move |_: P| {
+                let Some(this) = this else {return};
+                this.imp().tile_drawing.queue_draw();
+            }),
+        );
+
+        map_obj.connect_closure(
+            "bg-mode-changed",
+            false,
+            closure_local!(@weak-allow-none self as this => move |_: M| {
                 let Some(this) = this else {return};
                 this.imp().tile_drawing.queue_draw();
             }),
@@ -180,7 +192,12 @@ impl TilePicker {
         }));
     }
 
-    fn setup_draw(&self, palette_data: Rc<RefCell<Palette>>, tile_data: Rc<RefCell<Tileset>>) {
+    fn setup_draw(
+        &self,
+        palette_data: Rc<RefCell<Palette>>,
+        tile_data: Rc<RefCell<Tileset>>,
+        bg_mode: Rc<RefCell<BGMode>>,
+    ) {
         let imp = self.imp();
         imp.tile_drawing.set_draw_func(
             clone!(@weak palette_data, @weak tile_data, @weak imp.row_offset as row_offset, @weak imp.tile_size as tile_size => move |_, cr, w, _| {
@@ -202,7 +219,7 @@ impl TilePicker {
                     let y_offset = (i / 16) as f64 * tile_w;
                     let _ = cr.save();
                     cr.translate(x_offset, y_offset);
-                    tiles[ti].draw(cr, palette_data.clone(), None);
+                    tiles[ti].draw(cr, palette_data.clone(), None, &bg_mode.borrow());
                     let _ = cr.restore();
                 }
 

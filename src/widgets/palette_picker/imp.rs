@@ -1,3 +1,5 @@
+use std::cell::{OnceCell, RefCell};
+use std::rc::Rc;
 use std::sync::OnceLock;
 
 use glib::clone;
@@ -7,6 +9,8 @@ use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::CompositeTemplate;
 use gtk::{DrawingArea, DropDown, Label, ScrolledWindow};
+
+use crate::data::list_items::BGMode;
 
 #[derive(CompositeTemplate, Default)]
 #[template(resource = "/com/example/waffle/palette_picker.ui")]
@@ -20,6 +24,8 @@ pub struct PalettePicker {
 
     #[template_child]
     pub color_idx_label: TemplateChild<Label>,
+
+    pub bg_mode: OnceCell<Rc<RefCell<BGMode>>>,
 }
 
 // The central trait for subclassing a GObject

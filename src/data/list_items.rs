@@ -4,8 +4,8 @@ use enum_iterator::Sequence;
 
 #[derive(Sequence)]
 pub enum Bpp {
-    Two = 2,
-    Four = 4,
+    Two,
+    Four,
 }
 
 impl fmt::Display for Bpp {
@@ -13,6 +13,15 @@ impl fmt::Display for Bpp {
         match self {
             Bpp::Two => write!(f, "2bpp"),
             Bpp::Four => write!(f, "4bpp"),
+        }
+    }
+}
+
+impl Bpp {
+    pub fn to_val(&self) -> u8 {
+        match self {
+            Bpp::Two => 4,
+            Bpp::Four => 16,
         }
     }
 }
@@ -95,5 +104,17 @@ impl BGMode {
         match self {
             BGMode::M0BG1 | BGMode::M0BG2 | BGMode::M0BG3 | BGMode::M0BG4 => Bpp::Two,
         }
+    }
+
+    pub fn idx_to_pal_sel(&self, mut idx: u8) -> Option<u8> {
+        if idx < self.palette_offset() {
+            return None;
+        }
+        idx -= self.palette_offset();
+        idx /= self.bpp().to_val();
+        if idx >= 8 {
+            return None;
+        }
+        return Some(idx);
     }
 }

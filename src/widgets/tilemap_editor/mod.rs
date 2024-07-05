@@ -8,10 +8,9 @@ use glib::closure_local;
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-use gtk::EventControllerMotion;
 use gtk::GestureClick;
 
-use crate::data::list_items::Zoom;
+use crate::data::list_items::{BGMode, Zoom};
 use crate::data::palette::Palette;
 use crate::data::tiles::Tileset;
 
@@ -27,11 +26,12 @@ impl TilemapEditor {
         &self,
         palette_data: Rc<RefCell<Palette>>,
         tile_data: Rc<RefCell<Tileset>>,
+        bg_mode: Rc<RefCell<BGMode>>,
         palette_obj: P,
         tile_obj: T,
     ) {
         self.setup_gesture();
-        self.setup_draw(palette_data, tile_data.clone());
+        self.setup_draw(palette_data, tile_data.clone(), bg_mode);
         self.setup_signal_connection(palette_obj, tile_obj, tile_data);
     }
 
@@ -39,33 +39,35 @@ impl TilemapEditor {
         let click_event = GestureClick::new();
         click_event.connect_released(clone!(@weak self as this => move |_, _, x, y| {
             let imp = this.imp();
-            let xx = x + imp.tilemap_scroll.hadjustment().value();
-            let yy = y + imp.tilemap_scroll.vadjustment().value();
+            // let xx = x + imp.tilemap_scroll.hadjustment().value();
+            // let yy = y + imp.tilemap_scroll.vadjustment().value();
             let tile_w = crate::TILE_W * imp.zoom_level.borrow().to_val();
-            let new_idx = (yy / tile_w) as u32 * 32 + (xx / tile_w) as u32;
+            let new_idx = (y / tile_w) as u32 * 32 + (x / tile_w) as u32;
             println!("click on {new_idx}");
             // emit signal
             if imp.map_data.borrow_mut().set_tile(new_idx, &*imp.curr_tile.borrow()) {
-                println!("change tile {}", imp.curr_tile.borrow().tile_idx);
                 this.emit_by_name::<()>("tilemap-changed", &[]);
             }
         }));
         self.imp().tilemap_drawing.add_controller(click_event);
-
-        // let hover_event = EventControllerMotion::new();
     }
 
-    fn setup_draw(&self, palette_data: Rc<RefCell<Palette>>, tile_data: Rc<RefCell<Tileset>>) {
+    fn setup_draw(
+        &self,
+        palette_data: Rc<RefCell<Palette>>,
+        tile_data: Rc<RefCell<Tileset>>,
+        bg_mode: Rc<RefCell<BGMode>>,
+    ) {
         let imp = self.imp();
         imp.tilemap_drawing.set_draw_func(
-            clone!(@weak imp, @weak palette_data, @weak tile_data => move |_, cr, _, _| {
+            clone!(@weak imp, @weak palette_data, @weak tile_data, @weak bg_mode => move |_, cr, _, _| {
                 let _ = cr.save();
                 match *imp.zoom_level.borrow() {
                     Zoom::Half => cr.scale(0.5, 0.5),
                     Zoom::One => (),
                     Zoom::Two => cr.scale(2.0, 2.0),
                 }
-                imp.map_data.borrow().draw(cr, palette_data, tile_data);
+                imp.map_data.borrow().draw(cr, palette_data, tile_data, bg_mode);
                 let _ = cr.restore();
             }),
         );
@@ -90,7 +92,7 @@ impl TilemapEditor {
             closure_local!(@weak-allow-none self as this => move |_: P, new_idx: u8| {
                 let Some(this) = this else {return};
                 // TODO: account for tilemap setting
-                this.imp().curr_tile.borrow_mut().palette = new_idx;
+                this.imp().curr_tile.borrow_mut().set_palette(new_idx.min(7));
             }),
         );
 
@@ -100,8 +102,7 @@ impl TilemapEditor {
             closure_local!(@weak-allow-none self as this, @weak-allow-none tile_data => move |_: T| {
                 let Some(this) = this else {return};
                 let Some(tile_data) = tile_data else {return};
-                this.imp().curr_tile.borrow_mut().tile_idx = tile_data.borrow().get_idx();
-                println!("new tile {}", this.imp().curr_tile.borrow().tile_idx);
+                this.imp().curr_tile.borrow_mut().set_tile_idx(tile_data.borrow().get_idx().min(2 ^ 16 - 1) as u16);
             }),
         );
     }

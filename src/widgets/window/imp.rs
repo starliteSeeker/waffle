@@ -2,7 +2,6 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::OnceLock;
 
-use glib::clone;
 use glib::subclass::InitializingObject;
 use glib::subclass::Signal;
 use gtk::prelude::*;
@@ -10,7 +9,6 @@ use gtk::subclass::prelude::*;
 use gtk::Button;
 use gtk::{glib, CompositeTemplate};
 
-use crate::data::list_items::BGMode;
 use crate::data::palette::Palette;
 use crate::data::tiles::Tileset;
 use crate::widgets::color_picker::ColorPicker;
@@ -34,8 +32,6 @@ pub struct Window {
 
     pub palette_data: Rc<RefCell<Palette>>,
     pub tile_data: Rc<RefCell<Tileset>>,
-
-    pub bg_mode: Rc<RefCell<BGMode>>,
 }
 
 // The central trait for subclassing a GObject
@@ -64,25 +60,36 @@ impl ObjectImpl for Window {
     fn constructed(&self) {
         self.parent_constructed();
 
+        let bg_mode = self.tilemap_editor.imp().bg_mode.clone();
+
         self.palette_picker.setup_all(
             self.palette_data.clone(),
             self.obj().clone(),
             self.color_picker.clone(),
+            bg_mode.clone(),
+            self.tilemap_editor.clone(),
         );
-        self.color_picker
-            .setup_all(self.palette_picker.clone(), self.palette_data.clone());
+
+        self.color_picker.setup_all(
+            self.palette_picker.clone(),
+            self.palette_data.clone(),
+            bg_mode.clone(),
+        );
 
         self.tile_picker.setup_all(
             Some(self.obj().clone()),
             self.palette_data.clone(),
             self.tile_data.clone(),
             self.palette_picker.clone(),
+            bg_mode.clone(),
+            self.tilemap_editor.clone(),
         );
 
         // setup tilemap editor
         self.tilemap_editor.setup_all(
             self.palette_data.clone(),
             self.tile_data.clone(),
+            bg_mode.clone(),
             self.palette_picker.clone(),
             self.tile_picker.clone(),
         );

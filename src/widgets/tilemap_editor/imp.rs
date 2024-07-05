@@ -87,6 +87,15 @@ impl ObjectImpl for TilemapEditor {
                 this.imp().tilemap_drawing.queue_draw();
             }),
         );
+
+        // redraw canvas
+        self.obj().connect_closure(
+            "bg-mode-changed",
+            false,
+            closure_local!(|this: Self::Type| {
+                this.imp().tilemap_drawing.queue_draw();
+            }),
+        );
     }
 
     fn signals() -> &'static [Signal] {

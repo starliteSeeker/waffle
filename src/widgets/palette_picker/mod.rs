@@ -11,9 +11,10 @@ use gtk::subclass::prelude::*;
 use gtk::{gio, glib};
 use gtk::{FileChooserAction, FileChooserDialog, FileFilter, GestureClick, ResponseType};
 
-use crate::data::color::Color;
+use crate::data::list_items::{BGMode, Bpp};
 use crate::data::palette::Palette;
 use crate::widgets::window::Window;
+use crate::TILE_W;
 
 const PAL_TILE_WIDTH: f64 = 24.0;
 
@@ -25,15 +26,19 @@ glib::wrapper! {
 }
 
 impl PalettePicker {
-    pub fn setup_all<O: ObjectExt>(
+    pub fn setup_all<O: ObjectExt, M: WidgetExt>(
         &self,
         palette_data: Rc<RefCell<Palette>>,
         dialog_scope: Window,
         other: O,
+        bg_mode: Rc<RefCell<BGMode>>,
+        map_obj: M,
     ) {
+        let _ = self.imp().bg_mode.set(bg_mode.clone());
+
         self.setup_gesture(palette_data.clone());
         self.setup_actions(palette_data.clone(), dialog_scope);
-        self.setup_signal_connection(other, palette_data.clone());
+        self.setup_signal_connection(other, palette_data.clone(), map_obj);
         self.setup_draw(palette_data.clone());
     }
 
@@ -43,16 +48,18 @@ impl PalettePicker {
         gesture.connect_released(clone!(@weak self as this => move |_, _, x, y| {
             // account for y scroll when calculating correct idx
             let yy = y + this.imp().palette_scroll.vadjustment().value();
-            let new_idx = (yy / 24.0) as u8 * 16 + (x / 24.0) as u8;
-            let old_idx = palette_data.borrow().sel_idx;
+            let new_idx = (yy / TILE_W) as u8 * 16 + (x / TILE_W) as u8;
+            let bg_mode = &*this.imp().bg_mode.get().unwrap().borrow();
+            let (pal_changed, col_changed) = palette_data.borrow_mut().set_idx(new_idx, bg_mode);
+
             // emit signals
-            if new_idx != old_idx {
-                palette_data.borrow_mut().sel_idx = new_idx;
-                let (r, g, b) = palette_data.borrow().get_curr().to_tuple();
+            if col_changed {
+                let (r, g, b) = palette_data.borrow().curr_color(bg_mode).to_tuple();
                 this.emit_by_name::<()>("color-idx-changed", &[&new_idx, &r, &g, &b]);
             }
-            if new_idx / 4 != old_idx / 4 {
-                this.emit_by_name::<()>("palette-idx-changed", &[&(new_idx - new_idx % 4)]);
+            // TODO bpp stuff
+            if pal_changed {
+                this.emit_by_name::<()>("palette-idx-changed", &[&(palette_data.borrow().pal_sel)]);
             }
         }));
         self.imp().palette_scroll.add_controller(gesture);
@@ -91,9 +98,7 @@ impl PalettePicker {
                                 }
                                 Ok(p) => {
                                     println!("load palette: {filename:?}");
-                                    let old_idx = palette_data.borrow().sel_idx;
-                                    *palette_data.borrow_mut() = p;
-                                    palette_data.borrow_mut().sel_idx = old_idx;
+                                    palette_data.borrow_mut().pal = p.pal;
                                     this.emit_by_name::<()>("palette-changed", &[]);
                                 }
                             };
@@ -112,10 +117,11 @@ impl PalettePicker {
         parent.insert_action_group("palette", Some(&actions));
     }
 
-    fn setup_signal_connection<O: ObjectExt>(
+    fn setup_signal_connection<O: ObjectExt, M: WidgetExt>(
         &self,
         color_obj: O,
         palette_data: Rc<RefCell<Palette>>,
+        map_obj: M,
     ) {
         // update color_idx_label
         let imp = self.imp();
@@ -153,9 +159,26 @@ impl PalettePicker {
                 // update color at color_idx
                 let Some(this) = this else {return};
                 let Some(palette_data) = palette_data else {return};
-                if palette_data.borrow_mut().set_curr(red, green, blue) {
+                let Some(bg_mode) = this.imp().bg_mode.get() else {return};
+
+                if palette_data.borrow_mut().set_curr(red, green, blue, &bg_mode.borrow()) {
                     this.emit_by_name::<()>("palette-changed", &[]);
                 }
+            }),
+        );
+
+        map_obj.connect_closure(
+            "bg-mode-changed",
+            false,
+            closure_local!(@weak-allow-none self as this, @weak-allow-none palette_data => move |_: M| {
+                let Some(this) = this else {return};
+                let Some(palette_data) = palette_data else {return};
+                let Some(bg_mode) = this.imp().bg_mode.get() else {return};
+                this.imp().palette_drawing.queue_draw();
+
+                let (r, g, b) = palette_data.borrow().curr_color(&bg_mode.borrow()).to_tuple();
+                let curr_idx = palette_data.borrow().curr_idx(&bg_mode.borrow());
+                this.emit_by_name::<()>("color-idx-changed", &[&curr_idx, &r, &g, &b]);
             }),
         );
     }
@@ -170,7 +193,7 @@ impl PalettePicker {
 
                 // draw palette
                 let pal = &palette_data.borrow().pal;
-                let bpp = imp.bpp_select.selected();
+                let bg_mode = imp.bg_mode.get().unwrap().borrow();
                 cr.set_line_width(1.0);
                 for i in 0..16 {
                     for j in 0..16 {
@@ -182,10 +205,9 @@ impl PalettePicker {
                         let _ = cr.fill();
 
                         // add marker for transparent palette color
-                        let is_transparent = match bpp {
-                            0 => j % 4 == 0,
-                            1 => j == 0,
-                            _ => panic!("invalid bpp dropdown value"),
+                        let is_transparent = match bg_mode.bpp() {
+                            Bpp::Two => j % 4 == 0,
+                            Bpp::Four => j == 0,
                         };
                         if is_transparent {
                             cr.arc(x_offset + 12.0, y_offset + 12.0, 3.0, 0.0 , 2.0 * std::f64::consts::PI);
@@ -199,31 +221,20 @@ impl PalettePicker {
                 }
 
                 // draw current palette group outline
-                let sel_idx = palette_data.borrow().sel_idx;
-                let x_idx = sel_idx % 16;
-                let y_idx = sel_idx / 16;
-                match bpp {
-                    0 => {
-                        let x_offset = (x_idx - x_idx % 4) as f64 * PAL_TILE_WIDTH;
-                        let y_offset = y_idx as f64 * PAL_TILE_WIDTH;
-                        cr.rectangle(x_offset, y_offset, PAL_TILE_WIDTH * 4.0, PAL_TILE_WIDTH);
-                    },
-                    1 => {
-                        let x_offset = 0 as f64 * PAL_TILE_WIDTH;
-                        let y_offset = y_idx as f64 * PAL_TILE_WIDTH;
-                        cr.rectangle(x_offset, y_offset, PAL_TILE_WIDTH * 16.0, PAL_TILE_WIDTH);
-                    },
-                    _ => panic!("invalid bpp dropdown value"),
-                }
+                let pal_start_idx = bg_mode.palette_offset() + bg_mode.bpp().to_val() * palette_data.borrow().pal_sel;
+                let x_offset = (pal_start_idx % 16) as f64 * TILE_W;
+                let y_offset = (pal_start_idx / 16) as f64 * TILE_W;
+                cr.rectangle(x_offset, y_offset, TILE_W * bg_mode.bpp().to_val() as f64, TILE_W);
+
                 cr.clip_preserve();
                 cr.set_line_width(2.0);
                 cr.set_source_rgb(0.8, 0.8, 0.0);
                 let _ = cr.stroke();
 
                 // draw current color outline
-                let x_offset = (x_idx) as f64 * PAL_TILE_WIDTH;
-                let y_offset = (y_idx) as f64 * PAL_TILE_WIDTH;
-                cr.rectangle(x_offset, y_offset, PAL_TILE_WIDTH, PAL_TILE_WIDTH);
+                let x_offset = (palette_data.borrow().curr_idx(&bg_mode) % 16) as f64 * TILE_W;
+                let y_offset = (palette_data.borrow().curr_idx(&bg_mode) / 16) as f64 * TILE_W;
+                cr.rectangle(x_offset, y_offset, TILE_W, TILE_W);
                 cr.clip_preserve();
                 cr.set_line_width(4.0);
                 cr.set_source_rgb(1.0, 1.0, 0.0);

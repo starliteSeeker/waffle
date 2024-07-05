@@ -1,15 +1,30 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use modular_bitfield::prelude::*;
+
+use crate::data::list_items::BGMode;
 use crate::data::palette::Palette;
 use crate::data::tiles::Tileset;
 
+/*
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
 pub struct Tile {
     pub tile_idx: u32, // 10 bit
     pub x_flip: bool,
     pub y_flip: bool,
     pub palette: u8, // 0-7
+}
+*/
+
+#[bitfield]
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+pub struct Tile {
+    pub tile_idx: B10,
+    pub palette: B3,
+    pub priority: B1,
+    pub x_flip: bool,
+    pub y_flip: bool,
 }
 
 pub struct Tilemap {
@@ -18,13 +33,8 @@ pub struct Tilemap {
 
 impl Default for Tilemap {
     fn default() -> Self {
-        let mut arr = [Default::default(); 32 * 32];
-        arr[0] = Tile {
-            tile_idx: 1,
-            x_flip: false,
-            y_flip: false,
-            palette: 1,
-        };
+        let mut arr = [Tile::new(); 32 * 32];
+        arr[0].set_palette(7);
         Tilemap { tiles: arr }
     }
 }
@@ -49,10 +59,13 @@ impl Tilemap {
         cr: &gtk::cairo::Context,
         palette_data: Rc<RefCell<Palette>>,
         tile_data: Rc<RefCell<Tileset>>,
+        bg_mode: Rc<RefCell<BGMode>>,
     ) {
         // default color
         cr.set_source_rgb(0.0, 1.0, 1.0);
         let _ = cr.paint();
+
+        let bg_mode = bg_mode.borrow();
 
         for (i, tile) in self.tiles.into_iter().enumerate() {
             let x_offset = (i % 32) as f64 * crate::TILE_W;
@@ -60,18 +73,19 @@ impl Tilemap {
 
             let _ = cr.save();
             cr.translate(x_offset, y_offset);
-            if tile.x_flip {
+            if tile.x_flip() {
                 cr.translate(crate::TILE_W, 0.0);
                 cr.scale(-1.0, 1.0);
             }
-            if tile.y_flip {
+            if tile.y_flip() {
                 cr.translate(0.0, crate::TILE_W);
                 cr.scale(1.0, -1.0);
             }
-            tile_data.borrow().tiles[tile.tile_idx as usize].draw(
+            tile_data.borrow().tiles[tile.tile_idx() as usize].draw(
                 cr,
                 palette_data.clone(),
-                Some(tile.palette),
+                Some(bg_mode.palette_offset() + bg_mode.bpp().to_val() * tile.palette()),
+                &bg_mode,
             );
             let _ = cr.restore();
         }

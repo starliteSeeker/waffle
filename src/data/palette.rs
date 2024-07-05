@@ -3,9 +3,12 @@ use std::mem::{self, MaybeUninit};
 use itertools::Itertools;
 
 use super::color::Color;
+use crate::data::list_items::BGMode;
 
 pub struct Palette {
-    pub sel_idx: u8,
+    // pub sel_idx: u8,
+    pub pal_sel: u8,
+    pub color_sel: u8,
     pub pal: [Color; 256],
 }
 
@@ -14,7 +17,8 @@ impl Default for Palette {
         // unsafe initializing array
         // https://doc.rust-lang.org/core/mem/union.MaybeUninit.html#initializing-an-array-element-by-element
         Palette {
-            sel_idx: 0,
+            pal_sel: 0,
+            color_sel: 0,
             pal: {
                 let mut data: [MaybeUninit<Color>; 256] =
                     unsafe { MaybeUninit::uninit().assume_init() };
@@ -49,7 +53,8 @@ impl Palette {
         // unsafe initializing array
         // https://doc.rust-lang.org/core/mem/union.MaybeUninit.html#initializing-an-array-element-by-element
         Ok(Palette {
-            sel_idx: 0,
+            pal_sel: 0,
+            color_sel: 0,
             pal: {
                 let mut data: [MaybeUninit<Color>; 256] =
                     unsafe { MaybeUninit::uninit().assume_init() };
@@ -63,25 +68,56 @@ impl Palette {
         })
     }
 
-    pub fn get_curr(&self) -> Color {
-        self.pal[self.sel_idx as usize]
+    pub fn curr_idx(&self, bg_mode: &BGMode) -> u8 {
+        bg_mode.palette_offset() + self.pal_sel * bg_mode.bpp().to_val() + self.color_sel
+    }
+
+    pub fn curr_color(&self, bg_mode: &BGMode) -> &Color {
+        &self.pal[self.curr_idx(bg_mode) as usize]
     }
 
     // return true if new value is different
-    pub fn set_curr(&mut self, r: u8, g: u8, b: u8) -> bool {
-        let prev_c = self.pal[self.sel_idx as usize];
+    pub fn set_curr(&mut self, r: u8, g: u8, b: u8, bg_mode: &BGMode) -> bool {
+        let prev_c = self.curr_color(bg_mode);
         if prev_c.red() == r && prev_c.green() == g && prev_c.blue() == b {
             return false;
         }
-        self.pal[self.sel_idx as usize] = Color::new()
+        self.pal[self.curr_idx(bg_mode) as usize] = Color::new()
             .with_red(r.min(31))
             .with_green(g.min(31))
             .with_blue(b.min(31));
         return true;
     }
 
-    pub fn get_relative(&self, idx: u8) -> Color {
+    pub fn get_relative(&self, color_idx: u8, bg_mode: &BGMode) -> Color {
         // TODO: assume 2bpp again
-        self.pal[(self.sel_idx - (self.sel_idx % 4) + idx) as usize]
+        let i = bg_mode.palette_offset() + self.pal_sel * bg_mode.bpp().to_val() + color_idx;
+        self.pal[i as usize]
+    }
+
+    pub fn set_idx(&mut self, mut idx: u8, bg_mode: &BGMode) -> (bool, bool) {
+        if idx < bg_mode.palette_offset() {
+            // out of range
+            return (false, false);
+        }
+        idx -= bg_mode.palette_offset();
+
+        let color_sel = idx % bg_mode.bpp().to_val();
+        let pal_sel = idx / bg_mode.bpp().to_val();
+        if pal_sel >= 8 {
+            // out of range
+            return (false, false);
+        }
+        if self.pal_sel == pal_sel {
+            if self.color_sel == color_sel {
+                // same as old idx
+                return (false, false);
+            }
+            self.color_sel = color_sel;
+            return (false, true);
+        }
+        self.pal_sel = pal_sel;
+        self.color_sel = color_sel;
+        (true, true)
     }
 }

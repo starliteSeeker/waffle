@@ -2,6 +2,8 @@ use crate::data::palette::Palette;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::data::list_items::BGMode;
+
 pub struct Tile {
     chr: [u8; 64],
 }
@@ -30,6 +32,7 @@ impl Tile {
         cr: &gtk::cairo::Context,
         palette_data: Rc<RefCell<Palette>>,
         palette_offset: Option<u8>,
+        bg_mode: &BGMode,
     ) {
         let pxl_w = crate::TILE_W / 8.0;
         // TODO: assume 2bpp for now
@@ -51,7 +54,10 @@ impl Tile {
             let (r, g, b) = if let Some(idx) = palette_offset {
                 palette_data.borrow().pal[idx as usize + i].to_cairo()
             } else {
-                palette_data.borrow().get_relative(i as u8).to_cairo()
+                palette_data
+                    .borrow()
+                    .get_relative(i as u8, bg_mode)
+                    .to_cairo()
             };
             cr.set_source_rgb(r, g, b);
             let _ = cr.fill();
