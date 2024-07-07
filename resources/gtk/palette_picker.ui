@@ -23,11 +23,13 @@
     <child>
       <object class="GtkActionBar">
         <child type="start">
-          <object class="GtkButton" id="palette_open_btn">
-            <property name="label">Open</property>
+          <object class="GtkButton" id="palette_reload_btn">
+            <property name="label">Reload</property>
             <property name="icon-name">view-refresh-symbolic</property>
             <property name="tooltip-text">Reload palette file</property>
-            <property name="action-name">palette.reload</property>
+            <!-- manually set in code to avoid it changing sensitive property by itself
+              <property name="action-name">palette.reload</property>
+            -->
           </object>
         </child>
         <child type="start">
@@ -41,6 +43,11 @@
                 </items>
               </object>
             </property>
+          </object>
+        </child>
+        <child type="end">
+          <object class="GtkButton" id="test_button">
+            <property name="label">test</property>
           </object>
         </child>
         <child type="end">

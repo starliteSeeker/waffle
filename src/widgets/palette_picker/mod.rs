@@ -1,7 +1,10 @@
 mod imp;
 
 use std::cell::RefCell;
+use std::io::Write;
 use std::rc::Rc;
+
+use std::fs::File;
 
 use gio::{ActionEntry, SimpleActionGroup};
 use glib::clone;
@@ -97,6 +100,7 @@ impl PalettePicker {
                                 Ok(p) => {
                                     println!("load palette: {filename:?}");
                                     palette_data.borrow_mut().pal = p.pal;
+                                    this.set_file(Some(filename));
                                     this.emit_by_name::<()>("palette-changed", &[]);
                                 }
                             };
@@ -110,8 +114,47 @@ impl PalettePicker {
             )
             .build();
 
+        let action_reload = ActionEntry::builder("reload")
+            .activate(
+                clone!(@weak self as this, @weak palette_data => move |_, _, _| {
+                    let Some(file) = this.file() else {
+                        eprintln!("No palette file currently open");
+                        return;
+                    };
+
+                    match Palette::from_path(&file) {
+                        Err(e) => {
+                            eprintln!("Error: {}", e);
+                        }
+                        Ok(p) => {
+                            println!("load palette: {file:?}");
+                            palette_data.borrow_mut().pal = p.pal;
+                            this.emit_by_name::<()>("palette-changed", &[]);
+                        }
+                    };
+                }),
+            )
+            .build();
+
+        let action_save = ActionEntry::builder("save")
+            .activate(
+                clone!(@weak self as this, @weak palette_data => move |_, _, _| {
+                    let Some(filepath) = this.file() else {return};
+                    println!("save palette: {filepath:?}");
+                    match File::create(filepath) {
+                        Ok(mut f) => {
+                            for c in palette_data.borrow().pal {
+                                let _ = f.write_all(&c.into_bytes());
+                            }
+                        },
+                        Err(e) => eprintln!("Error saving file: {e}"),
+                    }
+                }),
+            )
+            .build();
+
         let actions = SimpleActionGroup::new();
-        actions.add_action_entries([action_open]);
+        actions.add_action_entries([action_open, action_reload, action_save]);
         parent.insert_action_group("palette", Some(&actions));
     }
 
