@@ -7,15 +7,15 @@ use std::rc::Rc;
 use std::fs::File;
 
 use gio::{ActionEntry, SimpleActionGroup};
-use glib::clone;
-use glib::closure_local;
+use glib::{clone, closure_local};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
+use gtk::GestureClick;
 use gtk::{gio, glib};
-use gtk::{FileChooserAction, FileChooserDialog, FileFilter, GestureClick, ResponseType};
 
 use crate::data::list_items::{BGMode, Bpp};
 use crate::data::palette::Palette;
+use crate::utils::*;
 use crate::widgets::window::Window;
 use crate::TILE_W;
 
@@ -71,45 +71,22 @@ impl PalettePicker {
         let action_open = ActionEntry::builder("open")
             .activate(
                 clone!(@weak self as this, @weak palette_data, @weak parent => move |_, _, _| {
-                    let dialog = FileChooserDialog::new(
-                        Some("Open Palette File"),
-                        Some(&parent),
-                        FileChooserAction::Open,
-                        &[("Open", ResponseType::Ok), ("Cancel", ResponseType::Cancel)],
-                    );
-
-                    // *.bin file filter and all file filter
-                    let bin_filter = FileFilter::new();
-                    bin_filter.set_name(Some("Binary Files (.bin)"));
-                    bin_filter.add_suffix("bin");
-                    let all_filter = FileFilter::new();
-                    all_filter.set_name(Some("All Files"));
-                    all_filter.add_pattern("*");
-                    dialog.add_filter(&bin_filter);
-                    dialog.add_filter(&all_filter);
-
-                    dialog.connect_response(move |d: &FileChooserDialog, response: ResponseType| {
-                        if response == ResponseType::Ok {
-                            // load file
-                            let file = d.file().expect("Couldn't get file");
-                            let filename = file.path().expect("Couldn't get file path");
-                            match Palette::from_path(&filename) {
+                    file_open_dialog(
+                        parent,
+                        move |path| {
+                            match Palette::from_path(&path) {
                                 Err(e) => {
                                     eprintln!("Error: {}", e);
                                 }
                                 Ok(p) => {
-                                    println!("load palette: {filename:?}");
+                                    println!("load palette: {path:?}");
                                     palette_data.borrow_mut().pal = p.pal;
-                                    this.set_file(Some(filename));
+                                    this.set_file(Some(path));
                                     this.emit_by_name::<()>("palette-changed", &[]);
                                 }
                             };
-                        }
-
-                        d.close();
-                    });
-
-                    dialog.show();
+                        },
+                    );
                 }),
             )
             .build();
@@ -153,8 +130,26 @@ impl PalettePicker {
             )
             .build();
 
+        let action_save_as = ActionEntry::builder("saveas")
+            .activate(
+                clone!(@weak self as this, @weak palette_data, @weak parent => move |_, _, _| {
+                    file_save_dialog(parent, move |_, filepath| {
+                        println!("save palette: {filepath:?}");
+                        match File::create(filepath) {
+                            Ok(mut f) => {
+                                for c in palette_data.borrow().pal {
+                                    let _ = f.write_all(&c.into_bytes());
+                                }
+                            },
+                            Err(e) => eprintln!("Error saving file: {e}"),
+                        }
+                    });
+                }),
+            )
+            .build();
+
         let actions = SimpleActionGroup::new();
-        actions.add_action_entries([action_open, action_reload, action_save]);
+        actions.add_action_entries([action_open, action_reload, action_save, action_save_as]);
         parent.insert_action_group("palette", Some(&actions));
     }
 
