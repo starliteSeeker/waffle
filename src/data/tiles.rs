@@ -2,7 +2,8 @@ use crate::data::palette::Palette;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::data::list_items::BGMode;
+use crate::data::list_items::{BGMode, TileSize};
+use crate::TILE_W;
 
 pub struct Tile {
     chr: [u8; 64],
@@ -72,10 +73,12 @@ pub struct Tileset {
 
 impl Default for Tileset {
     fn default() -> Self {
+        let mut zero = [0; 64];
+        zero[0] = 3;
         Tileset {
             sel_idx: 0,
             tiles: vec![
-                Tile { chr: [0; 64] },
+                Tile { chr: zero },
                 Tile { chr: [1; 64] },
                 Tile { chr: [2; 64] },
                 Tile { chr: [3; 64] },
@@ -126,5 +129,63 @@ impl Tileset {
 
     pub fn is_valid_16(&self) -> bool {
         self.sel_idx + 16 + 1 < self.get_size() as u32
+    }
+
+    // draw a 8x8 tile, or an invalid tile if index is out of range
+    pub fn draw_tile(
+        &self,
+        idx: u16,
+        cr: &gtk::cairo::Context,
+        palette_data: Rc<RefCell<Palette>>,
+        palette_offset: Option<u8>,
+        bg_mode: &BGMode,
+    ) {
+        match self.tiles.get(idx as usize) {
+            Some(tile) => {
+                tile.draw(cr, palette_data, palette_offset, bg_mode);
+            }
+            None => {
+                let _ = cr.save();
+                cr.rectangle(0.0, 0.0, TILE_W, TILE_W);
+                cr.set_source_rgb(1.0, 0.8, 0.8);
+                let _ = cr.fill();
+                cr.rectangle(0.0, 0.0, TILE_W, TILE_W);
+                cr.clip();
+                cr.move_to(0.0, TILE_W);
+                cr.line_to(TILE_W, 0.0);
+                cr.set_line_width(4.0);
+                cr.set_source_rgb(1.0, 0.7, 0.7);
+                let _ = cr.stroke();
+                let _ = cr.restore();
+            }
+        }
+    }
+
+    pub fn draw_tile_size(
+        &self,
+        idx: u16,
+        cr: &gtk::cairo::Context,
+        palette_data: Rc<RefCell<Palette>>,
+        palette_offset: Option<u8>,
+        bg_mode: &BGMode,
+        tile_size: &TileSize,
+    ) {
+        match tile_size {
+            TileSize::Eight => {
+                self.draw_tile(idx, cr, palette_data.clone(), palette_offset, &bg_mode);
+            }
+            TileSize::Sixteen => {
+                let _ = cr.save();
+                cr.scale(0.5, 0.5);
+                self.draw_tile(idx, cr, palette_data.clone(), palette_offset, &bg_mode);
+                cr.translate(TILE_W, 0.0);
+                self.draw_tile(idx + 1, cr, palette_data.clone(), palette_offset, &bg_mode);
+                cr.translate(0.0, TILE_W);
+                self.draw_tile(idx + 17, cr, palette_data.clone(), palette_offset, &bg_mode);
+                cr.translate(-TILE_W, 0.0);
+                self.draw_tile(idx + 16, cr, palette_data.clone(), palette_offset, &bg_mode);
+                let _ = cr.restore();
+            }
+        }
     }
 }

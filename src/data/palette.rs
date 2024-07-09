@@ -24,7 +24,28 @@ impl Default for Palette {
                     unsafe { MaybeUninit::uninit().assume_init() };
 
                 // some random coloful palette
-                for i in 0..256 {
+                for i in 0..8 {
+                    for j in 0..16 {
+                        let r = if i & 0b001 == 0 {
+                            (j as u8 * 2).min(31)
+                        } else {
+                            0
+                        };
+                        let g = if i & 0b010 == 0 {
+                            (j as u8 * 2).min(31)
+                        } else {
+                            0
+                        };
+                        let b = if i & 0b100 == 0 {
+                            (j as u8 * 2).min(31)
+                        } else {
+                            0
+                        };
+                        data[i * 16 + j]
+                            .write(Color::from_bytes([r | (g & 0b111) << 5, g >> 3 | b << 2]));
+                    }
+                }
+                for i in 128..256 {
                     let r = i as u8 & 0b00001111;
                     let g = (i as u8 & 0b01110000) >> 4;
                     let b = if i & 0x80 != 0 { 0b11111 } else { 0b0 };

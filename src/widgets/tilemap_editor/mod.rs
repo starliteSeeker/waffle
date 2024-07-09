@@ -10,7 +10,7 @@ use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::GestureClick;
 
-use crate::data::list_items::{BGMode, Zoom};
+use crate::data::list_items::{BGMode, TileSize, Zoom};
 use crate::data::palette::Palette;
 use crate::data::tiles::Tileset;
 
@@ -27,11 +27,12 @@ impl TilemapEditor {
         palette_data: Rc<RefCell<Palette>>,
         tile_data: Rc<RefCell<Tileset>>,
         bg_mode: Rc<RefCell<BGMode>>,
+        tile_size: Rc<RefCell<TileSize>>,
         palette_obj: P,
         tile_obj: T,
     ) {
         self.setup_gesture();
-        self.setup_draw(palette_data, tile_data.clone(), bg_mode);
+        self.setup_draw(palette_data, tile_data.clone(), bg_mode, tile_size);
         self.setup_signal_connection(palette_obj, tile_obj, tile_data);
     }
 
@@ -57,17 +58,18 @@ impl TilemapEditor {
         palette_data: Rc<RefCell<Palette>>,
         tile_data: Rc<RefCell<Tileset>>,
         bg_mode: Rc<RefCell<BGMode>>,
+        tile_size: Rc<RefCell<TileSize>>,
     ) {
         let imp = self.imp();
         imp.tilemap_drawing.set_draw_func(
-            clone!(@weak imp, @weak palette_data, @weak tile_data, @weak bg_mode => move |_, cr, _, _| {
+            clone!(@weak imp, @weak palette_data, @weak tile_data, @weak bg_mode, @weak tile_size => move |_, cr, _, _| {
                 let _ = cr.save();
                 match *imp.zoom_level.borrow() {
                     Zoom::Half => cr.scale(0.5, 0.5),
                     Zoom::One => (),
                     Zoom::Two => cr.scale(2.0, 2.0),
                 }
-                imp.map_data.borrow().draw(cr, palette_data, tile_data, bg_mode);
+                imp.map_data.borrow().draw(cr, palette_data, tile_data, bg_mode, tile_size);
                 let _ = cr.restore();
             }),
         );
@@ -99,10 +101,18 @@ impl TilemapEditor {
         tile_obj.connect_closure(
             "tile-idx-changed",
             false,
-            closure_local!(@weak-allow-none self as this, @weak-allow-none tile_data => move |_: T| {
+            closure_local!(@weak-allow-none self as this => move |_: T, new_idx: u32| {
                 let Some(this) = this else {return};
-                let Some(tile_data) = tile_data else {return};
-                this.imp().curr_tile.borrow_mut().set_tile_idx(tile_data.borrow().get_idx().min(2 ^ 16 - 1) as u16);
+                this.imp().curr_tile.borrow_mut().set_tile_idx(new_idx as u16);
+            }),
+        );
+
+        tile_obj.connect_closure(
+            "tile-size-changed",
+            false,
+            closure_local!(@weak-allow-none self as this => move |_: T| {
+                let Some(this) = this else {return};
+                this.imp().tilemap_drawing.queue_draw();
             }),
         );
     }

@@ -3,19 +3,9 @@ use std::rc::Rc;
 
 use modular_bitfield::prelude::*;
 
-use crate::data::list_items::BGMode;
+use crate::data::list_items::{BGMode, TileSize};
 use crate::data::palette::Palette;
 use crate::data::tiles::Tileset;
-
-/*
-#[derive(Clone, Copy, Default, PartialEq, Eq)]
-pub struct Tile {
-    pub tile_idx: u32, // 10 bit
-    pub x_flip: bool,
-    pub y_flip: bool,
-    pub palette: u8, // 0-7
-}
-*/
 
 #[bitfield]
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
@@ -60,6 +50,7 @@ impl Tilemap {
         palette_data: Rc<RefCell<Palette>>,
         tile_data: Rc<RefCell<Tileset>>,
         bg_mode: Rc<RefCell<BGMode>>,
+        tile_size: Rc<RefCell<TileSize>>,
     ) {
         // default color
         cr.set_source_rgb(0.0, 1.0, 1.0);
@@ -81,11 +72,14 @@ impl Tilemap {
                 cr.translate(0.0, crate::TILE_W);
                 cr.scale(1.0, -1.0);
             }
-            tile_data.borrow().tiles[tile.tile_idx() as usize].draw(
+
+            tile_data.borrow().draw_tile_size(
+                tile.tile_idx(),
                 cr,
                 palette_data.clone(),
                 Some(bg_mode.palette_offset() + bg_mode.bpp().to_val() * tile.palette()),
                 &bg_mode,
+                &tile_size.borrow(),
             );
             let _ = cr.restore();
         }

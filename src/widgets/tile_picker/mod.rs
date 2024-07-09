@@ -44,7 +44,7 @@ impl TilePicker {
             let new_idx = (*this.imp().row_offset.borrow() + y as u32 / 24) * 16 + (x / 24.0) as u32;
             // emit signal
             if tile_data.borrow_mut().set_idx(new_idx) {
-                this.emit_by_name::<()>("tile-idx-changed", &[]);
+                this.emit_by_name::<()>("tile-idx-changed", &[&new_idx]);
             }
         }));
         self.imp().tile_drawing.add_controller(gesture);
@@ -125,7 +125,7 @@ impl TilePicker {
         self.connect_closure(
             "tile-idx-changed",
             false,
-            closure_local!(|this: Self| {
+            closure_local!(|this: Self, _: u32| {
                 this.imp().tile_drawing.queue_draw();
             }),
         );
@@ -166,7 +166,7 @@ impl TilePicker {
         self.connect_closure(
             "tile-idx-changed",
             false,
-            closure_local!(@weak-allow-none tile_data => move |this: Self| {
+            closure_local!(@weak-allow-none tile_data => move |this: Self, _: u32| {
                 let Some(tile_data) = tile_data else {return};
                 this.imp().tile_idx_label.set_label(&format!("${:03X} / ${:03X}", tile_data.borrow().get_idx(), tile_data.borrow().get_size() - 1));
             }),

@@ -86,7 +86,9 @@ impl ObjectImpl for TilePicker {
         static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
         SIGNALS.get_or_init(|| {
             vec![
-                Signal::builder("tile-idx-changed").build(),
+                Signal::builder("tile-idx-changed")
+                    .param_types([u32::static_type()])
+                    .build(),
                 Signal::builder("tile-changed").build(),
                 Signal::builder("tile-size-changed").build(),
             ]
