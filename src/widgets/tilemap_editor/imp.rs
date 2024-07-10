@@ -9,7 +9,7 @@ use glib::subclass::{InitializingObject, Signal};
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-use gtk::{CompositeTemplate, DrawingArea, DropDown, ScrolledWindow, StringList};
+use gtk::{CompositeTemplate, DrawingArea, DropDown, ScrolledWindow, StringList, ToggleButton};
 
 use crate::data::list_items::{BGMode, Zoom};
 use crate::data::tilemap::{Tile, Tilemap};
@@ -29,6 +29,12 @@ pub struct TilemapEditor {
     pub mode_select: TemplateChild<DropDown>,
     #[template_child]
     pub mode_list: TemplateChild<StringList>,
+    #[template_child]
+    pub flip_x_btn: TemplateChild<ToggleButton>,
+    #[template_child]
+    pub flip_y_btn: TemplateChild<ToggleButton>,
+    #[template_child]
+    pub priority_btn: TemplateChild<ToggleButton>,
 
     pub map_data: Rc<RefCell<Tilemap>>,
     pub zoom_level: Rc<RefCell<Zoom>>,
@@ -87,6 +93,19 @@ impl ObjectImpl for TilemapEditor {
                 this.imp().tilemap_drawing.queue_draw();
             }),
         );
+
+        self.flip_x_btn
+            .connect_active_notify(clone!(@weak self as this => move |btn| {
+                this.curr_tile.borrow_mut().set_x_flip(btn.is_active());
+            }));
+        self.flip_y_btn
+            .connect_active_notify(clone!(@weak self as this => move |btn| {
+                this.curr_tile.borrow_mut().set_y_flip(btn.is_active());
+            }));
+        self.priority_btn
+            .connect_active_notify(clone!(@weak self as this => move |btn| {
+                this.curr_tile.borrow_mut().set_priority(btn.is_active());
+            }));
 
         // redraw canvas
         self.obj().connect_closure(

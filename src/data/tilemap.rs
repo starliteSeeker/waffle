@@ -12,7 +12,7 @@ use crate::data::tiles::Tileset;
 pub struct Tile {
     pub tile_idx: B10,
     pub palette: B3,
-    pub priority: B1,
+    pub priority: bool,
     pub x_flip: bool,
     pub y_flip: bool,
 }

@@ -149,13 +149,15 @@ impl Tileset {
                 cr.rectangle(0.0, 0.0, TILE_W, TILE_W);
                 cr.set_source_rgb(1.0, 0.8, 0.8);
                 let _ = cr.fill();
-                cr.rectangle(0.0, 0.0, TILE_W, TILE_W);
-                cr.clip();
-                cr.move_to(0.0, TILE_W);
-                cr.line_to(TILE_W, 0.0);
-                cr.set_line_width(4.0);
+                cr.arc(
+                    TILE_W / 2.0,
+                    TILE_W / 2.0,
+                    TILE_W / 6.0,
+                    0.0,
+                    2.0 * std::f64::consts::PI,
+                );
                 cr.set_source_rgb(1.0, 0.7, 0.7);
-                let _ = cr.stroke();
+                let _ = cr.fill();
                 let _ = cr.restore();
             }
         }

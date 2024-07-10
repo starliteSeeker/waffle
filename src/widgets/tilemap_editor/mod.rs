@@ -108,6 +108,14 @@ impl TilemapEditor {
         );
 
         tile_obj.connect_closure(
+            "tile-changed",
+            false,
+            closure_local!(@weak-allow-none self as this => move |_: T| {
+                let Some(this) = this else {return};
+                this.imp().tilemap_drawing.queue_draw();
+            }),
+        );
+        tile_obj.connect_closure(
             "tile-size-changed",
             false,
             closure_local!(@weak-allow-none self as this => move |_: T| {

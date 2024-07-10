@@ -46,6 +46,32 @@
             </property>
           </object>
         </child>
+        <child type="start">
+          <object class="GtkBox">
+            <property name="orientation">horizontal</property>
+            <child>
+              <object class="GtkToggleButton" id="flip_x_btn">
+                <property name="label">Flipx</property>
+                <property name="icon-name">object-flip-horizontal-symbolic</property>
+                <property name="tooltip-text">flip tile horizontally</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkToggleButton" id="flip_y_btn">
+                <property name="label">Flipy</property>
+                <property name="icon-name">object-flip-vertical-symbolic</property>
+                <property name="tooltip-text">flip tile vertically</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkToggleButton" id="priority_btn">
+                <property name="label">Priority</property>
+                <property name="icon-name">tile-priority</property>
+                <property name="tooltip-text">move tile to front</property>
+              </object>
+            </child>
+          </object>
+        </child>
       </object>
     </child>
   </template>

@@ -2,9 +2,10 @@ pub mod data;
 pub mod utils;
 pub mod widgets;
 
+use gtk::gdk::Display;
 use gtk::prelude::*;
 use gtk::{gio, glib};
-use gtk::{Application, Builder};
+use gtk::{Application, Builder, IconTheme};
 use widgets::window::Window;
 
 const APP_ID: &str = "com.example.waffle";
@@ -30,6 +31,9 @@ fn on_startup(app: &Application) {
     let menubar =
         Builder::from_resource("/com/example/waffle/menus.ui").object::<gio::Menu>("menubar");
     app.set_menubar(menubar.as_ref());
+
+    let icon_theme = IconTheme::for_display(&Display::default().unwrap());
+    icon_theme.add_resource_path("/com/example/waffle/icons/48x48/status/");
 }
 
 fn build_ui(app: &Application) {
