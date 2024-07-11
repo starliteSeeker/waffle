@@ -67,7 +67,7 @@ impl Tile {
 }
 
 pub struct Tileset {
-    sel_idx: u32,
+    sel_idx: u16,
     pub tiles: Vec<Tile>,
 }
 
@@ -88,6 +88,8 @@ impl Default for Tileset {
 }
 
 impl Tileset {
+    const MAX: usize = 2 ^ 10;
+
     pub fn from_path(path: &std::path::PathBuf) -> std::io::Result<Self> {
         let mut content = std::fs::read(path)?;
         let len = content.len();
@@ -103,6 +105,14 @@ impl Tileset {
             content.resize(len + align - (len % align), 0);
         }
 
+        if len / align > Self::MAX {
+            eprintln!("tile count exceeds maximum of {} tiles", Self::MAX);
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "file too large",
+            ));
+        }
+
         let mut tiles = Vec::new();
         for i in (0..len).step_by(align) {
             tiles.push(Tile::from_2bpp(&content[i..i + align]).unwrap());
@@ -110,13 +120,13 @@ impl Tileset {
         Ok(Tileset { sel_idx: 0, tiles })
     }
 
-    pub fn get_idx(&self) -> u32 {
+    pub fn get_idx(&self) -> u16 {
         self.sel_idx
     }
 
     // return true if vale changed
-    pub fn set_idx(&mut self, new_idx: u32) -> bool {
-        if new_idx < self.get_size() as u32 && new_idx != self.sel_idx {
+    pub fn set_idx(&mut self, new_idx: u16) -> bool {
+        if new_idx < self.get_size() as u16 && new_idx != self.sel_idx {
             self.sel_idx = new_idx;
             return true;
         }
@@ -128,7 +138,7 @@ impl Tileset {
     }
 
     pub fn is_valid_16(&self) -> bool {
-        self.sel_idx + 16 + 1 < self.get_size() as u32
+        self.sel_idx + 16 + 1 < self.get_size() as u16
     }
 
     // draw a 8x8 tile, or an invalid tile if index is out of range

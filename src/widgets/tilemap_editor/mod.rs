@@ -33,15 +33,13 @@ impl TilemapEditor {
     ) {
         self.setup_gesture();
         self.setup_draw(palette_data, tile_data.clone(), bg_mode, tile_size);
-        self.setup_signal_connection(palette_obj, tile_obj, tile_data);
+        self.setup_signal_connection(palette_obj, tile_obj);
     }
 
     fn setup_gesture(&self) {
         let click_event = GestureClick::new();
         click_event.connect_released(clone!(@weak self as this => move |_, _, x, y| {
             let imp = this.imp();
-            // let xx = x + imp.tilemap_scroll.hadjustment().value();
-            // let yy = y + imp.tilemap_scroll.vadjustment().value();
             let tile_w = crate::TILE_W * imp.zoom_level.borrow().to_val();
             let new_idx = (y / tile_w) as u32 * 32 + (x / tile_w) as u32;
             println!("click on {new_idx}");
@@ -74,12 +72,7 @@ impl TilemapEditor {
             }),
         );
     }
-    fn setup_signal_connection<P: WidgetExt, T: WidgetExt>(
-        &self,
-        palette_obj: P,
-        tile_obj: T,
-        tile_data: Rc<RefCell<Tileset>>,
-    ) {
+    fn setup_signal_connection<P: WidgetExt, T: WidgetExt>(&self, palette_obj: P, tile_obj: T) {
         palette_obj.connect_closure(
             "palette-changed",
             false,

@@ -13,6 +13,7 @@ use gtk::{FileChooserAction, FileChooserDialog, FileFilter, GestureClick, Respon
 use crate::data::list_items::{BGMode, TileSize};
 use crate::data::palette::Palette;
 use crate::data::tiles::Tileset;
+use crate::TILE_W;
 
 glib::wrapper! {
     pub struct TilePicker(ObjectSubclass<imp::TilePicker>)
@@ -41,10 +42,10 @@ impl TilePicker {
         let gesture = GestureClick::new();
         gesture.connect_released(clone!(@weak self as this => move |_, _, x, y| {
             // account for row offset when calculating correct idx
-            let new_idx = (*this.imp().row_offset.borrow() + y as u32 / 24) * 16 + (x / 24.0) as u32;
+            let new_idx = (*this.imp().row_offset.borrow() as f64 + y / TILE_W) as u16 * 16 + (x / TILE_W) as u16;
             // emit signal
             if tile_data.borrow_mut().set_idx(new_idx) {
-                this.emit_by_name::<()>("tile-idx-changed", &[&new_idx]);
+                this.emit_by_name::<()>("tile-idx-changed", &[&(new_idx as u32)]);
             }
         }));
         self.imp().tile_drawing.add_controller(gesture);
