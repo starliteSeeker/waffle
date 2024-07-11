@@ -91,6 +91,9 @@ impl fmt::Display for BGMode {
 }
 
 impl BGMode {
+    // which part of the palette is used is decided by BGMode
+    // 4bpp backgrounds use colors 0-127
+    // 2bpp backgrounds use a range of 32 colors starting from palette_offset()
     pub fn palette_offset(&self) -> u8 {
         match self {
             BGMode::M0BG1 => 0,

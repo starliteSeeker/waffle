@@ -35,7 +35,6 @@ impl Tilemap {
         if idx >= 32 * 32 {
             return false;
         }
-
         if self.tiles[idx as usize] == *tile {
             return false;
         }

@@ -6,7 +6,6 @@ use super::color::Color;
 use crate::data::list_items::BGMode;
 
 pub struct Palette {
-    // pub sel_idx: u8,
     pub pal_sel: u8,
     pub color_sel: u8,
     pub pal: [Color; 256],
@@ -111,11 +110,11 @@ impl Palette {
     }
 
     pub fn get_relative(&self, color_idx: u8, bg_mode: &BGMode) -> Color {
-        // TODO: assume 2bpp again
         let i = bg_mode.palette_offset() + self.pal_sel * bg_mode.bpp().to_val() + color_idx;
         self.pal[i as usize]
     }
 
+    // return (palette_sel changed, color_sel changed)
     pub fn set_idx(&mut self, mut idx: u8, bg_mode: &BGMode) -> (bool, bool) {
         if idx < bg_mode.palette_offset() {
             // out of range

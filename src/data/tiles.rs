@@ -16,10 +16,10 @@ impl Tile {
             return None;
         }
 
+        // s = [bit 0 of pixels 0-7, bit 1 of pixels 0-7,
+        //      bit 0 of pixels 8-15, bit 1 of pixels 8-15, ...]
         let mut chr = [0; 64];
         for i in 0..64 {
-            // pxl 01234567
-            //   0bxxxxxxxx
             let a = i / 8;
             let b = i % 8;
             chr[i] = (s[2 * a] >> (7 - b)) & 0b1; // bit 0
@@ -88,6 +88,7 @@ impl Default for Tileset {
 }
 
 impl Tileset {
+    // tile index is stored as 10-bit integer in tilemap::Tile
     const MAX: usize = 2 ^ 10;
 
     pub fn from_path(path: &std::path::PathBuf) -> std::io::Result<Self> {
@@ -141,7 +142,7 @@ impl Tileset {
         self.sel_idx + 16 + 1 < self.get_size() as u16
     }
 
-    // draw a 8x8 tile, or an invalid tile if index is out of range
+    // draw an 8x8 tile, or an invalid tile if index is out of range
     pub fn draw_tile(
         &self,
         idx: u16,
@@ -155,6 +156,7 @@ impl Tileset {
                 tile.draw(cr, palette_data, palette_offset, bg_mode);
             }
             None => {
+                // pink tile with dot at the center
                 let _ = cr.save();
                 cr.rectangle(0.0, 0.0, TILE_W, TILE_W);
                 cr.set_source_rgb(1.0, 0.8, 0.8);
@@ -173,6 +175,7 @@ impl Tileset {
         }
     }
 
+    // draw 8x8 or 16x16 tile depending on tile_size
     pub fn draw_tile_size(
         &self,
         idx: u16,
@@ -187,6 +190,8 @@ impl Tileset {
                 self.draw_tile(idx, cr, palette_data.clone(), palette_offset, &bg_mode);
             }
             TileSize::Sixteen => {
+                // (idx   )(idx+ 1)
+                // (idx+16)(idx+17)
                 let _ = cr.save();
                 cr.scale(0.5, 0.5);
                 self.draw_tile(idx, cr, palette_data.clone(), palette_offset, &bg_mode);
