@@ -22,6 +22,10 @@
         <attribute name="label">Save as</attribute>
         <attribute name="action">palette.saveas</attribute>
       </item>
+      <item>
+        <attribute name="label">Reload</attribute>
+        <attribute name="action">palette.reload</attribute>
+      </item>
     </submenu>
     <submenu>
       <attribute name="label">Tileset</attribute>

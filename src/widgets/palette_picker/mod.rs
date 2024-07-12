@@ -2,6 +2,7 @@ mod imp;
 
 use std::cell::RefCell;
 use std::io::Write;
+use std::path::PathBuf;
 use std::rc::Rc;
 
 use std::fs::File;
@@ -58,7 +59,6 @@ impl PalettePicker {
                 let (r, g, b) = palette_data.borrow().curr_color(bg_mode).to_tuple();
                 this.emit_by_name::<()>("color-idx-changed", &[&new_idx, &r, &g, &b]);
             }
-            // TODO bpp stuff
             if pal_changed {
                 this.emit_by_name::<()>("palette-idx-changed", &[&(palette_data.borrow().pal_sel)]);
             }
@@ -150,6 +150,14 @@ impl PalettePicker {
 
         let actions = SimpleActionGroup::new();
         actions.add_action_entries([action_open, action_reload, action_save, action_save_as]);
+
+        // bind file to reload action
+        let reload = actions.lookup_action("reload").unwrap();
+        self.bind_property("file", &reload, "enabled")
+            .transform_to(|_, file: Option<PathBuf>| Some(file.is_some()))
+            .sync_create()
+            .build();
+
         parent.insert_action_group("palette", Some(&actions));
     }
 

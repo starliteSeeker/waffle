@@ -66,15 +66,6 @@ impl ObjectImpl for PalettePicker {
                 this.palette_drawing.queue_draw();
             }));
 
-        // bind file to reload button
-        self.obj()
-            .bind_property("file", &self.palette_reload_btn.get(), "action-name")
-            .transform_to(|_, file: Option<PathBuf>| {
-                Some(if file.is_some() { "palette.reload" } else { "" })
-            })
-            .sync_create()
-            .build();
-
         self.test_button
             .connect_clicked(clone!(@weak self as this => move |_: &Button| {
                 // this.palette_reload_btn.set_sensitive(false);
