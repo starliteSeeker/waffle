@@ -18,6 +18,13 @@ impl fmt::Display for Bpp {
 }
 
 impl Bpp {
+    pub fn bits(&self) -> u8 {
+        match self {
+            Bpp::Two => 2,
+            Bpp::Four => 4,
+        }
+    }
+
     pub fn to_val(&self) -> u8 {
         match self {
             Bpp::Two => 4,

@@ -35,17 +35,18 @@ impl Tile {
         palette_offset: Option<u8>,
         bg_mode: &BGMode,
     ) {
-        let pxl_w = crate::TILE_W / 8.0;
+        let pxl_w = TILE_W / 8.0;
         // TODO: assume 2bpp for now
         // collect pixels with same color, then draw the pixels together
-        let mut rects = vec![Vec::new(); 4];
+        let mut rects = vec![Vec::new(); bg_mode.bpp().bits() as usize];
 
         // (0, 0) as top left corner of tile
         for (j, c) in self.chr.into_iter().enumerate() {
             // top left corner of pixel
             let x_off = (j % 8) as f64 * pxl_w;
             let y_off = (j / 8) as f64 * pxl_w;
-            rects[c as usize].push((x_off, y_off));
+            // fail silently if c is out of range (>=4 for 2bpp, >=16 for 4bpp)
+            rects.get_mut(c as usize).map(|v| v.push((x_off, y_off)));
         }
 
         for (i, v) in rects.into_iter().enumerate() {
@@ -89,7 +90,7 @@ impl Default for Tileset {
 
 impl Tileset {
     // tile index is stored as 10-bit integer in tilemap::Tile
-    const MAX: usize = 2 ^ 10;
+    const MAX: usize = 0b1 << 10;
 
     pub fn from_path(path: &std::path::PathBuf) -> std::io::Result<Self> {
         let mut content = std::fs::read(path)?;
