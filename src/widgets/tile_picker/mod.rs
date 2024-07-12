@@ -98,6 +98,7 @@ impl TilePicker {
                                 Ok(t) => {
                                     println!("load tileset: {filename:?}");
                                     *tile_data.borrow_mut() = t;
+                                    *this.imp().row_offset.borrow_mut() = 0;
                                     this.emit_by_name::<()>("tile-changed", &[]);
                                 }
                             }
