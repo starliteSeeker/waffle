@@ -77,7 +77,7 @@ impl ObjectImpl for Window {
         );
 
         self.tile_picker.setup_all(
-            Some(self.obj().clone()),
+            self.obj().clone(),
             self.palette_data.clone(),
             self.tile_data.clone(),
             self.palette_picker.clone(),

@@ -38,7 +38,7 @@ impl Tile {
         let pxl_w = TILE_W / 8.0;
         // TODO: assume 2bpp for now
         // collect pixels with same color, then draw the pixels together
-        let mut rects = vec![Vec::new(); bg_mode.bpp().bits() as usize];
+        let mut rects = vec![Vec::new(); bg_mode.bpp().to_val() as usize];
 
         // (0, 0) as top left corner of tile
         for (j, c) in self.chr.into_iter().enumerate() {

@@ -19,14 +19,6 @@
     <child>
       <object class="GtkActionBar">
         <child type="start">
-          <object class="GtkButton" id="tilemap_reload_btn">
-            <property name="label">Reload</property>
-            <property name="icon-name">view-refresh-symbolic</property>
-            <property name="tooltip-text">Reload tilemap file</property>
-            <property name="action-name">tilemap.reload</property>
-          </object>
-        </child>
-        <child type="start">
           <object class="GtkDropDown" id="mode_select">
             <property name="tooltip-text">Set background mode</property>
             <property name="model">

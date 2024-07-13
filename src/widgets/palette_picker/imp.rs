@@ -24,8 +24,6 @@ pub struct PalettePicker {
     pub palette_drawing: TemplateChild<DrawingArea>,
     #[template_child]
     pub bpp_select: TemplateChild<DropDown>,
-    #[template_child]
-    pub palette_reload_btn: TemplateChild<Button>,
 
     #[template_child]
     pub color_idx_label: TemplateChild<Label>,
@@ -70,7 +68,7 @@ impl ObjectImpl for PalettePicker {
             .connect_clicked(clone!(@weak self as this => move |_: &Button| {
                 // this.palette_reload_btn.set_sensitive(false);
                 this.obj().set_file(None::<PathBuf>);
-                println!("{}", this.palette_reload_btn.is_sensitive());
+                // println!("{}", this.palette_reload_btn.is_sensitive());
             }));
     }
 

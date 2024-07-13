@@ -23,14 +23,6 @@
     <child>
       <object class="GtkActionBar">
         <child type="start">
-          <object class="GtkButton" id="palette_reload_btn">
-            <property name="label">Reload</property>
-            <property name="icon-name">view-refresh-symbolic</property>
-            <property name="tooltip-text">Reload palette file</property>
-            <property name="action-name">palette.reload</property>
-          </object>
-        </child>
-        <child type="start">
           <object class="GtkDropDown" id="bpp_select">
             <property name="tooltip-text">Set bits per pixel</property>
             <property name="model">

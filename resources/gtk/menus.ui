@@ -33,12 +33,16 @@
         <attribute name="label">Open</attribute>
         <attribute name="action">tiles.open</attribute>
       </item>
+      <item>
+        <attribute name="label">Reload</attribute>
+        <attribute name="action">tiles.reload</attribute>
+      </item>
     </submenu>
     <submenu>
       <attribute name="label">Tilemap</attribute>
       <item>
-        <attribute name="label">Dummy</attribute>
-        <attribute name="action">dummy.open</attribute>
+        <attribute name="label">Open</attribute>
+        <attribute name="action">tilemap.open</attribute>
       </item>
     </submenu>
   </menu>

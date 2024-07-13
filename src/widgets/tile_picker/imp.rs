@@ -1,9 +1,11 @@
 use std::cell::RefCell;
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::OnceLock;
 
 use enum_iterator::all;
 use glib::subclass::{InitializingObject, Signal};
+use glib::Properties;
 use glib::{clone, closure_local};
 use gtk::glib;
 use gtk::prelude::*;
@@ -12,8 +14,9 @@ use gtk::{Button, CompositeTemplate, DrawingArea, DropDown, Label, StringList};
 
 use crate::data::list_items::TileSize;
 
-#[derive(CompositeTemplate, Default)]
+#[derive(Properties, CompositeTemplate, Default)]
 #[template(resource = "/com/example/waffle/tile_picker.ui")]
+#[properties(wrapper_type = super::TilePicker)]
 pub struct TilePicker {
     #[template_child]
     pub tile_drawing: TemplateChild<DrawingArea>,
@@ -28,6 +31,9 @@ pub struct TilePicker {
     pub tile_size_select: TemplateChild<DropDown>,
     #[template_child]
     pub tile_size_items: TemplateChild<StringList>,
+
+    #[property(get, set, nullable)]
+    pub file: RefCell<Option<PathBuf>>,
 
     pub row_offset: Rc<RefCell<u32>>,
     pub tile_size: Rc<RefCell<TileSize>>,
@@ -50,16 +56,10 @@ impl ObjectSubclass for TilePicker {
     }
 }
 
+#[glib::derived_properties]
 impl ObjectImpl for TilePicker {
     fn constructed(&self) {
         self.parent_constructed();
-
-        /*
-        self.map_btn
-            .connect_clicked(clone!(@weak self as this => move |_| {
-                this.map_lbl.set_label(&this.map_data.get().to_string());
-            }));
-        */
 
         // populate StringList
         for i in all::<TileSize>() {

@@ -1,18 +1,21 @@
 mod imp;
 
 use std::cell::RefCell;
+use std::path::PathBuf;
 use std::rc::Rc;
 
 use gio::{ActionEntry, SimpleActionGroup};
 use glib::{clone, closure_local};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
+use gtk::GestureClick;
 use gtk::{gio, glib};
-use gtk::{FileChooserAction, FileChooserDialog, FileFilter, GestureClick, ResponseType, Window};
 
 use crate::data::list_items::{BGMode, TileSize};
 use crate::data::palette::Palette;
 use crate::data::tiles::Tileset;
+use crate::utils::*;
+use crate::widgets::window::Window;
 use crate::TILE_W;
 
 glib::wrapper! {
@@ -23,9 +26,9 @@ glib::wrapper! {
 }
 
 impl TilePicker {
-    pub fn setup_all<S: WidgetExt + IsA<Window>, P: WidgetExt, M: WidgetExt>(
+    pub fn setup_all<P: WidgetExt, M: WidgetExt>(
         &self,
-        dialog_scope: Option<S>,
+        parent: Window,
         pal: Rc<RefCell<Palette>>,
         tile_data: Rc<RefCell<Tileset>>,
         palette_obj: P,
@@ -33,7 +36,7 @@ impl TilePicker {
         map_obj: M,
     ) {
         self.setup_gesture(tile_data.clone());
-        self.setup_actions(dialog_scope, tile_data.clone());
+        self.setup_actions(parent, tile_data.clone());
         self.setup_signal_connection(tile_data.clone(), palette_obj.clone(), map_obj);
         self.setup_draw(pal, tile_data, bg_mode);
     }
@@ -51,70 +54,60 @@ impl TilePicker {
         self.imp().tile_drawing.add_controller(gesture);
     }
 
-    fn setup_actions<S: WidgetExt + IsA<Window>>(
-        &self,
-        scope: Option<S>,
-        tile_data: Rc<RefCell<Tileset>>,
-    ) {
-        let scope_clone = scope.clone();
+    fn setup_actions(&self, parent: Window, tile_data: Rc<RefCell<Tileset>>) {
         let action_open = ActionEntry::builder("open")
             .activate(
-                clone!(@weak self as this, @weak tile_data => move |_, _, _| {
-                    let dialog = FileChooserDialog::new(
-                        Some("Open Palette File"),
-                        scope_clone.as_ref(),
-                        FileChooserAction::Open,
-                        &[("Open", ResponseType::Ok), ("Cancel", ResponseType::Cancel)],
-                    );
-
-                    let bin_filter = FileFilter::new();
-                    bin_filter.set_name(Some("Binary Files (.bin)"));
-                    bin_filter.add_suffix("bin");
-                    let all_filter = FileFilter::new();
-                    all_filter.set_name(Some("All Files"));
-                    all_filter.add_pattern("*");
-                    dialog.add_filter(&bin_filter);
-                    dialog.add_filter(&all_filter);
-
-                    dialog.connect_response(move |d: &FileChooserDialog, response: ResponseType| {
-                        if response == ResponseType::Ok {
-                            // second dialog prompting for bit depth
-                            // TODO: pretend it's 2bpp
-                            /*
-                            let dialog = Dialog::with_buttons(
-                                Some("Select Bits per Pixel"),
-                                Some(d),
-                                DialogFlags::DESTROY_WITH_PARENT,
-                                &[("Open", ResponseType::Ok), ("Cancel", ResponseType::Cancel)],
-                                dialog.connect_response(move |d: &FileChooserDialog, response: ResponseType| {
-                            );
-                            */
-                            let file = d.file().expect("Couldn't get file");
-                            let filename = file.path().expect("Couldn't get file path");
-                            match Tileset::from_path(&filename) {
-                                Err(e) => {
-                                    eprintln!("Error: {}", e);
-                                }
-                                Ok(t) => {
-                                    println!("load tileset: {filename:?}");
-                                    *tile_data.borrow_mut() = t;
-                                    *this.imp().row_offset.borrow_mut() = 0;
-                                    this.emit_by_name::<()>("tile-changed", &[]);
-                                }
+                clone!(@weak self as this, @weak tile_data, @weak parent => move |_, _, _| {
+                    file_open_dialog(parent, move |path| {
+                        match Tileset::from_path(&path) {
+                            Err(e) => {
+                                eprintln!("Error: {}", e);
+                            }
+                            Ok(t) => {
+                                println!("load tileset: {path:?}");
+                                *tile_data.borrow_mut() = t;
+                                *this.imp().row_offset.borrow_mut() = 0;
+                                this.set_file(Some(path));
+                                this.emit_by_name::<()>("tile-changed", &[]);
                             }
                         }
-                        d.close();
                     });
-                    dialog.show();
+                }),
+            )
+            .build();
+
+        let action_reload = ActionEntry::builder("reload")
+            .activate(
+                clone!(@weak self as this, @weak tile_data => move |_, _, _| {
+                    let Some(path) = this.file() else {
+                        eprintln!("No palette file currently open");
+                        return;
+                    };
+                    match Tileset::from_path(&path) {
+                        Err(e) => {
+                            eprintln!("Error: {}", e);
+                        }
+                        Ok(t) => {
+                            println!("load tileset: {path:?}");
+                            *tile_data.borrow_mut() = t;
+                            *this.imp().row_offset.borrow_mut() = 0;
+                            this.emit_by_name::<()>("tile-changed", &[]);
+                        }
+                    }
                 }),
             )
             .build();
         let actions = SimpleActionGroup::new();
-        actions.add_action_entries([action_open]);
-        match scope {
-            Some(s) => s.insert_action_group("tiles", Some(&actions)),
-            None => self.insert_action_group("tiles", Some(&actions)),
-        }
+        actions.add_action_entries([action_open, action_reload]);
+
+        // bind file to reload action
+        let reload = actions.lookup_action("reload").unwrap();
+        self.bind_property("file", &reload, "enabled")
+            .transform_to(|_, file: Option<PathBuf>| Some(file.is_some()))
+            .sync_create()
+            .build();
+
+        parent.insert_action_group("tiles", Some(&actions));
     }
 
     fn setup_signal_connection<P: WidgetExt, M: WidgetExt>(
