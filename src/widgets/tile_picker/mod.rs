@@ -116,19 +116,23 @@ impl TilePicker {
         palette_obj: P,
         map_obj: M,
     ) {
-        // redraw self
+        // redraw/update self
         self.connect_closure(
             "tile-idx-changed",
             false,
-            closure_local!(|this: Self, _: u32| {
+            closure_local!(@weak-allow-none tile_data => move |this: Self, _: u32| {
                 this.imp().tile_drawing.queue_draw();
+                let Some(tile_data) = tile_data else {return};
+                this.set_index_label(tile_data.borrow().get_idx(), tile_data.borrow().get_size() as u16 - 1);
             }),
         );
         self.connect_closure(
             "tile-changed",
             false,
-            closure_local!(|this: Self| {
+            closure_local!(@weak-allow-none tile_data => move |this: Self| {
                 this.imp().tile_drawing.queue_draw();
+                let Some(tile_data) = tile_data else {return};
+                this.set_index_label(tile_data.borrow().get_idx(), tile_data.borrow().get_size() as u16 - 1);
             }),
         );
         palette_obj.connect_closure(
@@ -154,16 +158,6 @@ impl TilePicker {
             closure_local!(@weak-allow-none self as this => move |_: M| {
                 let Some(this) = this else {return};
                 this.imp().tile_drawing.queue_draw();
-            }),
-        );
-
-        // update tile index label
-        self.connect_closure(
-            "tile-idx-changed",
-            false,
-            closure_local!(@weak-allow-none tile_data => move |this: Self, _: u32| {
-                let Some(tile_data) = tile_data else {return};
-                this.imp().tile_idx_label.set_label(&format!("${:03X} / ${:03X}", tile_data.borrow().get_idx(), tile_data.borrow().get_size() - 1));
             }),
         );
 
@@ -250,5 +244,11 @@ impl TilePicker {
                 let _ = cr.restore();
             }),
         );
+    }
+
+    fn set_index_label(&self, idx: u16, max: u16) {
+        self.imp()
+            .tile_idx_label
+            .set_label(&format!("${:03X} / ${:03X}", idx, max));
     }
 }

@@ -168,14 +168,11 @@ impl PalettePicker {
         map_obj: M,
     ) {
         // update color_idx_label
-        let imp = self.imp();
-        let color_idx_label = imp.color_idx_label.get();
         self.connect_closure(
             "color-idx-changed",
             false,
-            closure_local!(@weak-allow-none color_idx_label => move |_: Self, new_idx: u8, _: u8, _: u8, _: u8| {
-                let Some(color_idx_label) = color_idx_label else {return};
-                color_idx_label.set_label(&format!("${:02X} / $FF", new_idx));
+            closure_local!(move |this: Self, new_idx: u8, _: u8, _: u8, _: u8| {
+                this.set_label(new_idx);
             }),
         );
 
@@ -298,5 +295,11 @@ impl PalettePicker {
                 let _ = cr.stroke();
             }),
         );
+    }
+
+    fn set_label(&self, idx: u8) {
+        self.imp()
+            .color_idx_label
+            .set_label(&format!("${:02X} / $FF", idx));
     }
 }

@@ -58,6 +58,9 @@ impl ObjectImpl for PalettePicker {
     fn constructed(&self) {
         self.parent_constructed();
 
+        // initialize label
+        self.obj().set_label(0);
+
         // redraw when bpp setting changed
         self.bpp_select
             .connect_selected_notify(clone!(@weak self as this => move |_| {

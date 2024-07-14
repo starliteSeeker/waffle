@@ -13,6 +13,7 @@ use gtk::subclass::prelude::*;
 use gtk::{Button, CompositeTemplate, DrawingArea, DropDown, Label, StringList};
 
 use crate::data::list_items::TileSize;
+use crate::data::tiles::Tileset;
 
 #[derive(Properties, CompositeTemplate, Default)]
 #[template(resource = "/com/example/waffle/tile_picker.ui")]
@@ -60,6 +61,10 @@ impl ObjectSubclass for TilePicker {
 impl ObjectImpl for TilePicker {
     fn constructed(&self) {
         self.parent_constructed();
+
+        // initialize label
+        self.obj()
+            .set_index_label(0, Tileset::default().get_size() as u16 - 1);
 
         // populate StringList
         for i in all::<TileSize>() {
