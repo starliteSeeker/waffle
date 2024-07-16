@@ -151,9 +151,14 @@ impl PalettePicker {
         let actions = SimpleActionGroup::new();
         actions.add_action_entries([action_open, action_reload, action_save, action_save_as]);
 
-        // bind file to reload action
+        // bind file to action
         let reload = actions.lookup_action("reload").unwrap();
         self.bind_property("file", &reload, "enabled")
+            .transform_to(|_, file: Option<PathBuf>| Some(file.is_some()))
+            .sync_create()
+            .build();
+        let save = actions.lookup_action("save").unwrap();
+        self.bind_property("file", &save, "enabled")
             .transform_to(|_, file: Option<PathBuf>| Some(file.is_some()))
             .sync_create()
             .build();
