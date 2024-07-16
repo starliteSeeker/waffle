@@ -93,6 +93,7 @@ impl ObjectImpl for Window {
             self.tile_picker.imp().tile_size.clone(),
             self.palette_picker.clone(),
             self.tile_picker.clone(),
+            self.obj().clone(),
         );
 
         // self.test_button.set_action_name(Some("palette.test"));

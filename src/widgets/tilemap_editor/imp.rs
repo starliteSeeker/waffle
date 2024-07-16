@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::OnceLock;
 
@@ -6,6 +7,7 @@ use enum_iterator::all;
 use glib::clone;
 use glib::closure_local;
 use glib::subclass::{InitializingObject, Signal};
+use glib::Properties;
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
@@ -14,8 +16,9 @@ use gtk::{CompositeTemplate, DrawingArea, DropDown, ScrolledWindow, StringList, 
 use crate::data::list_items::{BGMode, Zoom};
 use crate::data::tilemap::{Tile, Tilemap};
 
-#[derive(CompositeTemplate, Default)]
+#[derive(Properties, CompositeTemplate, Default)]
 #[template(resource = "/com/example/waffle/tilemap_editor.ui")]
+#[properties(wrapper_type = super::TilemapEditor)]
 pub struct TilemapEditor {
     #[template_child]
     pub tilemap_scroll: TemplateChild<ScrolledWindow>,
@@ -41,6 +44,9 @@ pub struct TilemapEditor {
     pub curr_tile: Rc<RefCell<Tile>>,
 
     pub bg_mode: Rc<RefCell<BGMode>>,
+
+    #[property(get, set, nullable)]
+    pub file: RefCell<Option<PathBuf>>,
 }
 
 // The central trait for subclassing a GObject
@@ -59,6 +65,7 @@ impl ObjectSubclass for TilemapEditor {
     }
 }
 
+#[glib::derived_properties]
 impl ObjectImpl for TilemapEditor {
     fn constructed(&self) {
         self.parent_constructed();

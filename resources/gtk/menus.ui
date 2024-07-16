@@ -44,6 +44,14 @@
         <attribute name="label">Open</attribute>
         <attribute name="action">tilemap.open</attribute>
       </item>
+      <item>
+        <attribute name="label">Save</attribute>
+        <attribute name="action">tilemap.save</attribute>
+      </item>
+      <item>
+        <attribute name="label">Save as</attribute>
+        <attribute name="action">tilemap.saveas</attribute>
+      </item>
     </submenu>
   </menu>
 </interface>

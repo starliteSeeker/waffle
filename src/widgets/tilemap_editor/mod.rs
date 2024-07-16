@@ -1,18 +1,25 @@
 mod imp;
 
 use std::cell::RefCell;
+use std::fs::File;
+use std::io::Write;
+use std::path::PathBuf;
 use std::rc::Rc;
 
+use gio::{ActionEntry, SimpleActionGroup};
 use glib::clone;
 use glib::closure_local;
-use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::GestureClick;
+use gtk::{gio, glib};
 
 use crate::data::list_items::{BGMode, TileSize, Zoom};
 use crate::data::palette::Palette;
+use crate::data::tilemap::Tilemap;
 use crate::data::tiles::Tileset;
+use crate::utils::*;
+use crate::widgets::window::Window;
 
 glib::wrapper! {
     pub struct TilemapEditor(ObjectSubclass<imp::TilemapEditor>)
@@ -30,10 +37,12 @@ impl TilemapEditor {
         tile_size: Rc<RefCell<TileSize>>,
         palette_obj: P,
         tile_obj: T,
+        parent: Window,
     ) {
         self.setup_gesture();
         self.setup_draw(palette_data, tile_data.clone(), bg_mode, tile_size);
         self.setup_signal_connection(palette_obj, tile_obj);
+        self.setup_actions(parent);
     }
 
     fn setup_gesture(&self) {
@@ -116,5 +125,68 @@ impl TilemapEditor {
                 this.imp().tilemap_drawing.queue_draw();
             }),
         );
+    }
+
+    fn setup_actions(&self, parent: Window) {
+        let action_open = ActionEntry::builder("open")
+            .activate(clone!(@weak self as this, @weak parent => move |_, _, _| {
+                file_open_dialog(parent, move |path| {
+                    match Tilemap::from_path(&path) {
+                        Err(e) => {
+                            eprintln!("Error: {}", e);
+                        }
+                        Ok(t) => {
+                            println!("load tilemap: {path:?}");
+                            *this.imp().map_data.borrow_mut() = t;
+                            this.set_file(Some(path));
+                            this.emit_by_name::<()>("tilemap-changed", &[]);
+                        }
+                    }
+                });
+            }))
+            .build();
+
+        let action_save = ActionEntry::builder("save")
+            .activate(clone!(@weak self as this, @weak parent => move |_, _, _| {
+                let Some(filepath) = this.file() else {return};
+                println!("save tilemap: {filepath:?}");
+                match File::create(filepath) {
+                    Ok(mut f) => {
+                        for c in this.imp().map_data.borrow().tiles {
+                            let _ = f.write_all(&c.into_bytes());
+                        }
+                    },
+                    Err(e) => eprintln!("Error saving file: {e}"),
+                }
+            }))
+            .build();
+
+        let action_save_as = ActionEntry::builder("saveas")
+            .activate(clone!(@weak self as this, @weak parent => move |_, _, _| {
+                file_save_dialog(parent, move |_, filepath| {
+                    println!("save tilemap: {filepath:?}");
+                    match File::create(filepath) {
+                        Ok(mut f) => {
+                            for c in this.imp().map_data.borrow().tiles {
+                                let _ = f.write_all(&c.into_bytes());
+                            }
+                        },
+                        Err(e) => eprintln!("Error saving file: {e}"),
+                    }
+                });
+            }))
+            .build();
+
+        let actions = SimpleActionGroup::new();
+        actions.add_action_entries([action_open, action_save, action_save_as]);
+
+        // bind file to action
+        let save = actions.lookup_action("save").unwrap();
+        self.bind_property("file", &save, "enabled")
+            .transform_to(|_, file: Option<PathBuf>| Some(file.is_some()))
+            .sync_create()
+            .build();
+
+        parent.insert_action_group("tilemap", Some(&actions));
     }
 }
