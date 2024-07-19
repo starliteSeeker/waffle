@@ -135,11 +135,12 @@ impl PalettePicker {
                 clone!(@weak self as this, @weak palette_data, @weak parent => move |_, _, _| {
                     file_save_dialog(parent, move |_, filepath| {
                         println!("save palette: {filepath:?}");
-                        match File::create(filepath) {
+                        match File::create(filepath.clone()) {
                             Ok(mut f) => {
                                 for c in palette_data.borrow().pal {
                                     let _ = f.write_all(&c.into_bytes());
                                 }
+                                this.set_file(Some(filepath));
                             },
                             Err(e) => eprintln!("Error saving file: {e}"),
                         }
