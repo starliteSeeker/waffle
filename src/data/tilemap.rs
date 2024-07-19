@@ -25,8 +25,7 @@ pub struct Tilemap {
 
 impl Default for Tilemap {
     fn default() -> Self {
-        let mut arr = [Tile::new(); 32 * 32];
-        arr[0].set_palette(7);
+        let arr = [Tile::new(); 32 * 32];
         Tilemap { tiles: arr }
     }
 }

@@ -74,16 +74,9 @@ pub struct Tileset {
 
 impl Default for Tileset {
     fn default() -> Self {
-        let mut zero = [0; 64];
-        zero[0] = 3;
         Tileset {
             sel_idx: 0,
-            tiles: vec![
-                Tile { chr: zero },
-                Tile { chr: [1; 64] },
-                Tile { chr: [2; 64] },
-                Tile { chr: [3; 64] },
-            ],
+            tiles: vec![Tile { chr: [0; 64] }],
         }
     }
 }
