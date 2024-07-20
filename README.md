@@ -22,4 +22,5 @@ Not much. If I ever feel like it, some important/quality-of-life features to add
 - undo/redo
 - 4bpp backgrounds
 - select mode on tilemap
+- different import/export file formats
 
