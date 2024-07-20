@@ -2,6 +2,8 @@
 
 Tilemap editor for SNES backgrounds
 
+![waffle](https://github.com/user-attachments/assets/65aed4da-0b0c-478d-9f89-3c7582f87771)
+
 # Build
 
 ~~works on my machine~~ 
