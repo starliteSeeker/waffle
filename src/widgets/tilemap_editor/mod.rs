@@ -51,7 +51,6 @@ impl TilemapEditor {
             let imp = this.imp();
             let tile_w = crate::TILE_W * imp.zoom_level.borrow().to_val();
             let new_idx = (y / tile_w) as u32 * 32 + (x / tile_w) as u32;
-            println!("click on {new_idx}");
             // emit signal
             if imp.map_data.borrow_mut().set_tile(new_idx, &*imp.curr_tile.borrow()) {
                 this.emit_by_name::<()>("tilemap-changed", &[]);
