@@ -22,24 +22,6 @@
     </child>
     <child>
       <object class="GtkActionBar">
-        <child type="start">
-          <object class="GtkDropDown" id="bpp_select">
-            <property name="tooltip-text">Set bits per pixel</property>
-            <property name="model">
-              <object class="GtkStringList">
-                <items>
-                  <item>2bpp</item>
-                  <item>4bpp</item>
-                </items>
-              </object>
-            </property>
-          </object>
-        </child>
-        <child type="end">
-          <object class="GtkButton" id="test_button">
-            <property name="label">test</property>
-          </object>
-        </child>
         <child type="end">
           <object class="GtkLabel" id="color_idx_label">
             <property name="label">$?? / $FF</property>

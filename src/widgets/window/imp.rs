@@ -6,7 +6,6 @@ use glib::subclass::InitializingObject;
 use glib::subclass::Signal;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-use gtk::Button;
 use gtk::{glib, CompositeTemplate};
 
 use crate::data::palette::Palette;
@@ -19,8 +18,6 @@ use crate::widgets::tilemap_editor::TilemapEditor;
 #[derive(CompositeTemplate, Default)]
 #[template(resource = "/com/example/waffle/window.ui")]
 pub struct Window {
-    #[template_child]
-    pub test_button: TemplateChild<Button>,
     #[template_child]
     pub color_picker: TemplateChild<ColorPicker>,
     #[template_child]

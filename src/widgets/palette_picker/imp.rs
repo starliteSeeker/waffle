@@ -3,14 +3,13 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::OnceLock;
 
-use glib::clone;
 use glib::subclass::{InitializingObject, Signal};
 use glib::Properties;
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::CompositeTemplate;
-use gtk::{Button, DrawingArea, DropDown, Label, ScrolledWindow};
+use gtk::{DrawingArea, Label, ScrolledWindow};
 
 use crate::data::list_items::BGMode;
 
@@ -22,8 +21,6 @@ pub struct PalettePicker {
     pub palette_scroll: TemplateChild<ScrolledWindow>,
     #[template_child]
     pub palette_drawing: TemplateChild<DrawingArea>,
-    #[template_child]
-    pub bpp_select: TemplateChild<DropDown>,
 
     #[template_child]
     pub color_idx_label: TemplateChild<Label>,
@@ -32,9 +29,6 @@ pub struct PalettePicker {
     pub file: RefCell<Option<PathBuf>>,
 
     pub bg_mode: OnceCell<Rc<RefCell<BGMode>>>,
-
-    #[template_child]
-    pub test_button: TemplateChild<Button>,
 }
 
 // The central trait for subclassing a GObject
@@ -60,19 +54,6 @@ impl ObjectImpl for PalettePicker {
 
         // initialize label
         self.obj().set_label(0);
-
-        // redraw when bpp setting changed
-        self.bpp_select
-            .connect_selected_notify(clone!(@weak self as this => move |_| {
-                this.palette_drawing.queue_draw();
-            }));
-
-        self.test_button
-            .connect_clicked(clone!(@weak self as this => move |_: &Button| {
-                // this.palette_reload_btn.set_sensitive(false);
-                this.obj().set_file(None::<PathBuf>);
-                // println!("{}", this.palette_reload_btn.is_sensitive());
-            }));
     }
 
     fn signals() -> &'static [Signal] {

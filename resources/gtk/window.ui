@@ -33,10 +33,6 @@
                 <property name="margin-bottom">10</property>
               </object>
             </child>
-            <child>
-              <object class="GtkButton" id="test_button">
-              </object>
-            </child>
           </object>
         </child>
         <child>
