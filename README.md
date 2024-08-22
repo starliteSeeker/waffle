@@ -23,6 +23,10 @@ apt install libgtk-4-dev build-essential
 cargo build --release
 ```
 
+# File format
+
+File format for palette, tile set, and tile map is the same as the format used in CGRAM/VRAM, so it is possible to include the binary files directly in assembly code without further processing.
+
 # Future plans
 
 Not much. If I ever feel like it, some important/quality-of-life features to add include:
@@ -32,4 +36,4 @@ Not much. If I ever feel like it, some important/quality-of-life features to add
 - select mode on tilemap
 - different import/export file formats
 - layout resposive to window resize
-
+- options on how to display transparent colors
