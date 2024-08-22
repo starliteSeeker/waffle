@@ -2,6 +2,12 @@
 
 Tilemap editor for SNES backgrounds
 
+# Install
+
+Make sure GTK+ libraries are installed, then go to [Releases](https://github.com/starliteSeeker/waffle/releases) and download the newest version.
+
+Only the linux version is provided because that's the only one I can test.
+
 # Build
 
 ~~works on my machine~~ 
@@ -23,4 +29,5 @@ Not much. If I ever feel like it, some important/quality-of-life features to add
 - 4bpp backgrounds
 - select mode on tilemap
 - different import/export file formats
+- layout resposive to window resize
 
