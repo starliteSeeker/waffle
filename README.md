@@ -2,6 +2,8 @@
 
 Tilemap editor for SNES backgrounds
 
+![waffle](https://github.com/user-attachments/assets/5cb83f3d-8f57-4806-8d05-7fe6353194f8)
+
 # Install
 
 Make sure GTK+ libraries are installed, then go to [Releases](https://github.com/starliteSeeker/waffle/releases) and download the newest version.
