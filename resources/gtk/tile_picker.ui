@@ -2,6 +2,7 @@
 <interface>
   <template class="TilePicker" parent="GtkBox">
     <property name="orientation">vertical</property>
+    <property name="halign">center</property>
     <child>
       <object class="GtkBox">
         <property name="orientation">horizontal</property>
@@ -9,6 +10,7 @@
           <object class="GtkDrawingArea" id="tile_drawing">
             <property name="content-width">384</property>
             <property name="content-height">384</property>
+            <property name="valign">start</property>
           </object>
         </child>
         <child>
