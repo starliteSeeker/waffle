@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::OnceLock;
 
-use enum_iterator::all;
 use glib::clone;
 use glib::closure_local;
 use glib::subclass::{InitializingObject, Signal};
@@ -12,6 +11,7 @@ use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{CompositeTemplate, DrawingArea, DropDown, ScrolledWindow, StringList, ToggleButton};
+use strum::IntoEnumIterator;
 
 use crate::data::list_items::{BGMode, Zoom};
 use crate::data::tilemap::{Tile, Tilemap};
@@ -71,25 +71,25 @@ impl ObjectImpl for TilemapEditor {
         self.parent_constructed();
 
         // setup zoom dropdown
-        for i in all::<Zoom>() {
+        for i in Zoom::iter() {
             self.zoom_level_list.append(&i.to_string());
         }
         self.zoom_select.set_selected(Zoom::default() as u32);
         self.zoom_select
             .connect_selected_notify(clone!(@weak self as this => move |_| {
-                *this.zoom_level.borrow_mut() = all::<Zoom>().nth(this.zoom_select.selected() as usize).expect("shouldn't happen");
+                *this.zoom_level.borrow_mut() = Zoom::iter().nth(this.zoom_select.selected() as usize).expect("shouldn't happen");
                 this.tilemap_drawing.set_content_width((crate::TILE_W * 32.0 * this.zoom_level.borrow().to_val()) as i32);
                 this.tilemap_drawing.set_content_height((crate::TILE_W * 32.0 * this.zoom_level.borrow().to_val()) as i32);
                 this.obj().emit_by_name::<()>("zoom-level-changed", &[]);
             }));
 
         // setup bg mode dropdown
-        for i in all::<BGMode>() {
+        for i in BGMode::iter() {
             self.mode_list.append(&i.to_string());
         }
         self.mode_select
             .connect_selected_notify(clone!(@weak self as this => move |_| {
-                *this.bg_mode.borrow_mut() = all::<BGMode>().nth(this.mode_select.selected() as usize).expect("shouldn't happen");
+                *this.bg_mode.borrow_mut() = BGMode::iter().nth(this.mode_select.selected() as usize).expect("shouldn't happen");
                 this.obj().emit_by_name::<()>("bg-mode-changed", &[]);
             }));
 
