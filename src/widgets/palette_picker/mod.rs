@@ -4,6 +4,7 @@ use std::cell::RefCell;
 use std::io::Write;
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::str::FromStr;
 
 use std::fs::File;
 
@@ -14,6 +15,7 @@ use gtk::subclass::prelude::*;
 use gtk::GestureClick;
 use gtk::{gio, glib};
 
+use crate::data::file_format::PaletteFile;
 use crate::data::list_items::{BGMode, Bpp};
 use crate::data::palette::Palette;
 use crate::utils::*;
@@ -69,19 +71,33 @@ impl PalettePicker {
     fn setup_actions(&self, palette_data: Rc<RefCell<Palette>>, parent: Window) {
         // open file
         let action_open = ActionEntry::builder("open")
+            .parameter_type(Some(&String::static_variant_type()))
             .activate(
-                clone!(@weak self as this, @weak palette_data, @weak parent => move |_, _, _| {
+                clone!(@weak self as this, @weak palette_data, @weak parent => move |_, _, parameter| {
+                    // parse file format parameter
+                    let Some(file_format) = parameter else {return};
+                    let file_format = file_format.get::<String>().expect("parameter should have type String");
+                    let file_format = PaletteFile::from_str(&file_format).expect("invalid file format");
+
                     file_open_dialog(
                         parent,
                         move |path| {
-                            match Palette::from_path(&path) {
+                            let file_result = match file_format {
+                                PaletteFile::BGR555 => Palette::from_path_bgr555(&path),
+                                PaletteFile::RGB24 => Palette::from_path_rgb24(&path),
+                            };
+                            match file_result {
                                 Err(e) => {
                                     eprintln!("Error: {}", e);
                                 }
                                 Ok(p) => {
                                     println!("load palette: {path:?}");
                                     palette_data.borrow_mut().pal = p.pal;
-                                    this.set_file(Some(path));
+                                    // only store file name (and allow reloading)
+                                    // if the type is BGR555
+                                    if file_format == PaletteFile::default() {
+                                        this.set_file(Some(path));
+                                    }
                                     this.emit_by_name::<()>("palette-changed", &[]);
                                 }
                             };
@@ -99,12 +115,12 @@ impl PalettePicker {
                         return;
                     };
 
-                    match Palette::from_path(&file) {
+                    match Palette::from_path_bgr555(&file) {
                         Err(e) => {
                             eprintln!("Error: {}", e);
                         }
                         Ok(p) => {
-                            println!("load palette: {file:?}");
+                            println!("reload palette: {file:?}");
                             palette_data.borrow_mut().pal = p.pal;
                             this.emit_by_name::<()>("palette-changed", &[]);
                         }
