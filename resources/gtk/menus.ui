@@ -23,6 +23,7 @@
         <item>
           <attribute name="label">Save as</attribute>
           <attribute name="action">palette.saveas</attribute>
+          <attribute name="target">BGR555</attribute>
         </item>
         <item>
           <attribute name="label">Reload</attribute>
@@ -35,6 +36,14 @@
           <item>
             <attribute name="label">RGB24</attribute>
             <attribute name="action">palette.open</attribute>
+            <attribute name="target">RGB24</attribute>
+          </item>
+        </submenu>
+        <submenu>
+          <attribute name="label">Export</attribute>
+          <item>
+            <attribute name="label">RGB24</attribute>
+            <attribute name="action">palette.saveas</attribute>
             <attribute name="target">RGB24</attribute>
           </item>
         </submenu>
