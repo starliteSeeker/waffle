@@ -10,22 +10,44 @@
     </submenu>
     <submenu>
       <attribute name="label">Palette</attribute>
-      <item>
-        <attribute name="label">Open</attribute>
-        <attribute name="action">palette.open</attribute>
-      </item>
-      <item>
-        <attribute name="label">Save</attribute>
-        <attribute name="action">palette.save</attribute>
-      </item>
-      <item>
-        <attribute name="label">Save as</attribute>
-        <attribute name="action">palette.saveas</attribute>
-      </item>
-      <item>
-        <attribute name="label">Reload</attribute>
-        <attribute name="action">palette.reload</attribute>
-      </item>
+      <section>
+        <item>
+          <attribute name="label">Open</attribute>
+          <attribute name="action">palette.open</attribute>
+          <attribute name="target">BGR555</attribute>
+        </item>
+        <item>
+          <attribute name="label">Save</attribute>
+          <attribute name="action">palette.save</attribute>
+        </item>
+        <item>
+          <attribute name="label">Save as</attribute>
+          <attribute name="action">palette.saveas</attribute>
+          <attribute name="target">BGR555</attribute>
+        </item>
+        <item>
+          <attribute name="label">Reload</attribute>
+          <attribute name="action">palette.reload</attribute>
+        </item>
+      </section>
+      <section>
+        <submenu>
+          <attribute name="label">Import</attribute>
+          <item>
+            <attribute name="label">RGB24</attribute>
+            <attribute name="action">palette.open</attribute>
+            <attribute name="target">RGB24</attribute>
+          </item>
+        </submenu>
+        <submenu>
+          <attribute name="label">Export</attribute>
+          <item>
+            <attribute name="label">RGB24</attribute>
+            <attribute name="action">palette.saveas</attribute>
+            <attribute name="target">RGB24</attribute>
+          </item>
+        </submenu>
+      </section>
     </submenu>
     <submenu>
       <attribute name="label">Tileset</attribute>

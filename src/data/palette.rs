@@ -60,7 +60,7 @@ impl Default for Palette {
 }
 
 impl Palette {
-    pub fn from_path(path: &std::path::PathBuf) -> std::io::Result<Palette> {
+    pub fn from_path_bgr555(path: &std::path::PathBuf) -> std::io::Result<Palette> {
         let mut content = std::fs::read(&path)?;
         let len = content.len();
         if len < 512 {
@@ -81,6 +81,37 @@ impl Palette {
 
                 for (i, (lo, hi)) in content.into_iter().tuples().enumerate() {
                     data[i].write(Color::from_bytes([lo, hi]));
+                }
+
+                unsafe { mem::transmute::<_, [Color; 256]>(data) }
+            },
+        })
+    }
+
+    pub fn from_path_rgb24(path: &std::path::PathBuf) -> std::io::Result<Palette> {
+        let content = std::fs::read(&path)?;
+        let len = content.len();
+        if len != 3 * 256 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "file must be 768 bytes",
+            ));
+        }
+
+        // unsafe initializing array
+        // https://doc.rust-lang.org/core/mem/union.MaybeUninit.html#initializing-an-array-element-by-element
+        Ok(Palette {
+            pal_sel: 0,
+            color_sel: 0,
+            pal: {
+                let mut data: [MaybeUninit<Color>; 256] =
+                    unsafe { MaybeUninit::uninit().assume_init() };
+
+                for (i, (r, g, b)) in content.into_iter().tuples().enumerate() {
+                    let r = r >> 3;
+                    let g = g >> 3;
+                    let b = b >> 3;
+                    data[i].write(Color::new().with_red(r).with_green(g).with_blue(b));
                 }
 
                 unsafe { mem::transmute::<_, [Color; 256]>(data) }

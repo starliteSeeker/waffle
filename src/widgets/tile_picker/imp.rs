@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::OnceLock;
 
-use enum_iterator::all;
 use glib::subclass::{InitializingObject, Signal};
 use glib::Properties;
 use glib::{clone, closure_local};
@@ -11,6 +10,8 @@ use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{Button, CompositeTemplate, DrawingArea, DropDown, Label, StringList};
+
+use strum::IntoEnumIterator;
 
 use crate::data::list_items::TileSize;
 use crate::data::tiles::Tileset;
@@ -67,13 +68,13 @@ impl ObjectImpl for TilePicker {
             .set_index_label(0, Tileset::default().get_size() as u16 - 1);
 
         // populate StringList
-        for i in all::<TileSize>() {
+        for i in TileSize::iter() {
             self.tile_size_items.append(&format!("{}", i));
         }
 
         self.tile_size_select
             .connect_selected_notify(clone!(@weak self as this => move |_| {
-                *this.tile_size.borrow_mut() = all::<TileSize>().nth(this.tile_size_select.selected() as usize).expect("shouldn't happen");
+                *this.tile_size.borrow_mut() = TileSize::iter().nth(this.tile_size_select.selected() as usize).expect("shouldn't happen");
                 this.obj().emit_by_name::<()>("tile-size-changed", &[]);
             }));
 

@@ -1,8 +1,8 @@
 use std::fmt;
 
-use enum_iterator::Sequence;
+use strum::EnumIter;
 
-#[derive(Sequence)]
+#[derive(EnumIter)]
 pub enum Bpp {
     Two,
     Four,
@@ -33,7 +33,7 @@ impl Bpp {
     }
 }
 
-#[derive(Sequence, Default)]
+#[derive(EnumIter, Default)]
 pub enum TileSize {
     #[default]
     Eight = 8,
@@ -49,7 +49,7 @@ impl fmt::Display for TileSize {
     }
 }
 
-#[derive(Sequence, Default)]
+#[derive(EnumIter, Default)]
 pub enum Zoom {
     Half,
     #[default]
@@ -77,7 +77,7 @@ impl Zoom {
     }
 }
 
-#[derive(Sequence, Default)]
+#[derive(EnumIter, Default)]
 pub enum BGMode {
     #[default]
     M0BG1,

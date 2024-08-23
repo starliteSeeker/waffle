@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 gtk = { version = "0.8.2", package = "gtk4", features = ["v4_6"] }
 itertools = "0.13.0"
-enum-iterator = "2.1.0"
+strum = { version = "0.26", features = ["derive"] }
 modular-bitfield = "0.11.2"
 
 [build-dependencies]
