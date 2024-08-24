@@ -1,8 +1,8 @@
 use std::fmt;
 
-use strum::EnumIter;
+use strum::{EnumIter, EnumString};
 
-#[derive(EnumIter)]
+#[derive(EnumString, EnumIter, Debug, Copy, Clone)]
 pub enum Bpp {
     Two,
     Four,

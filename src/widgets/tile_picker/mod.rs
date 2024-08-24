@@ -3,6 +3,7 @@ mod imp;
 use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::str::FromStr;
 
 use gio::{ActionEntry, SimpleActionGroup};
 use glib::{clone, closure_local};
@@ -11,7 +12,7 @@ use gtk::subclass::prelude::*;
 use gtk::GestureClick;
 use gtk::{gio, glib};
 
-use crate::data::list_items::{BGMode, TileSize};
+use crate::data::list_items::{BGMode, Bpp, TileSize};
 use crate::data::palette::Palette;
 use crate::data::tiles::Tileset;
 use crate::utils::*;
@@ -56,10 +57,16 @@ impl TilePicker {
 
     fn setup_actions(&self, parent: Window, tile_data: Rc<RefCell<Tileset>>) {
         let action_open = ActionEntry::builder("open")
+            .parameter_type(Some(&String::static_variant_type()))
             .activate(
-                clone!(@weak self as this, @weak tile_data, @weak parent => move |_, _, _| {
+                clone!(@weak self as this, @weak tile_data, @weak parent => move |_, _, parameter| {
+                    // parse bit depth parameter
+                    let Some(bpp) = parameter else {return};
+                    let bpp = bpp.get::<String>().expect("parameter should have type String");
+                    let bpp = Bpp::from_str(&bpp).expect("invalid bit depth");
+
                     file_open_dialog(parent, move |path| {
-                        match Tileset::from_path(&path) {
+                        match Tileset::from_path(&path, bpp) {
                             Err(e) => {
                                 eprintln!("Error: {}", e);
                             }
@@ -83,7 +90,8 @@ impl TilePicker {
                         eprintln!("No palette file currently open");
                         return;
                     };
-                    match Tileset::from_path(&path) {
+                    let bpp = tile_data.borrow().bpp();
+                    match Tileset::from_path(&path, bpp) {
                         Err(e) => {
                             eprintln!("Error: {}", e);
                         }
