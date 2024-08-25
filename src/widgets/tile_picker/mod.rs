@@ -64,6 +64,9 @@ impl TilePicker {
                     let Some(bpp) = parameter else {return};
                     let bpp = bpp.get::<String>().expect("parameter should have type String");
                     let bpp = Bpp::from_str(&bpp).expect("invalid bit depth");
+                    if bpp != tile_data.borrow().bpp() {
+                        this.emit_by_name::<()>("bpp-changed", &[&(bpp as u8)]);
+                    }
 
                     file_open_dialog(parent, move |path| {
                         match Tileset::from_path(&path, bpp) {
@@ -144,9 +147,9 @@ impl TilePicker {
             }),
         );
         palette_obj.connect_closure(
-            "palette-idx-changed",
+            "color-idx-changed",
             false,
-            closure_local!(@weak-allow-none self as this => move |_: P, _: u8| {
+            closure_local!(@weak-allow-none self as this => move |_: P, _: u8, _: u8, _: u8, _: u8| {
                 let Some(this) = this else {return};
                 this.imp().tile_drawing.queue_draw();
             }),

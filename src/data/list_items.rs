@@ -2,7 +2,7 @@ use std::fmt;
 
 use strum::{EnumIter, EnumString};
 
-#[derive(EnumString, EnumIter, Debug, Copy, Clone)]
+#[derive(EnumString, EnumIter, Debug, PartialEq, Eq, Copy, Clone)]
 pub enum Bpp {
     Two,
     Four,
