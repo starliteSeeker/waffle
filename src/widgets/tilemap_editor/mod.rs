@@ -94,7 +94,6 @@ impl TilemapEditor {
             false,
             closure_local!(@weak-allow-none self as this => move |_: P, new_idx: u8, _: u8, _: u8, _: u8| {
                 let Some(this) = this else {return};
-                // TODO: account for tilemap setting
                 let bg_mode = this.imp().bg_mode.borrow();
                 let palette_idx = (new_idx / bg_mode.bpp().to_val()) % 8;
                 this.imp().curr_tile.borrow_mut().set_palette(palette_idx.min(7));
@@ -131,7 +130,6 @@ impl TilemapEditor {
             false,
             closure_local!(@weak-allow-none self as this => move |_: T, bpp: u8| {
                 let Some(this) = this else {return};
-                //TODO something
                 let bpp = Bpp::iter().nth(bpp as usize).expect("shouldn't happen");
                 match bpp {
                     Bpp::Two => {
