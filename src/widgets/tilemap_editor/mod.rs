@@ -6,6 +6,8 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::rc::Rc;
 
+use strum::IntoEnumIterator;
+
 use gio::{ActionEntry, SimpleActionGroup};
 use glib::clone;
 use glib::closure_local;
@@ -14,7 +16,7 @@ use gtk::subclass::prelude::*;
 use gtk::GestureClick;
 use gtk::{gio, glib};
 
-use crate::data::list_items::{TileSize, Zoom};
+use crate::data::list_items::{BGMode, BGModeTwo, Bpp, TileSize, Zoom};
 use crate::data::palette::Palette;
 use crate::data::tilemap::Tilemap;
 use crate::data::tiles::Tileset;
@@ -94,7 +96,7 @@ impl TilemapEditor {
                 let Some(this) = this else {return};
                 // TODO: account for tilemap setting
                 let bg_mode = this.imp().bg_mode.borrow();
-                let palette_idx = (new_idx - bg_mode.palette_offset()) / bg_mode.bpp().to_val();
+                let palette_idx = (new_idx / bg_mode.bpp().to_val()) % 8;
                 this.imp().curr_tile.borrow_mut().set_palette(palette_idx.min(7));
             }),
         );
@@ -122,6 +124,29 @@ impl TilemapEditor {
             closure_local!(@weak-allow-none self as this => move |_: T| {
                 let Some(this) = this else {return};
                 this.imp().tilemap_drawing.queue_draw();
+            }),
+        );
+        tile_obj.connect_closure(
+            "bpp-changed",
+            false,
+            closure_local!(@weak-allow-none self as this => move |_: T, bpp: u8| {
+                let Some(this) = this else {return};
+                //TODO something
+                let bpp = Bpp::iter().nth(bpp as usize).expect("shouldn't happen");
+                match bpp {
+                    Bpp::Two => {
+                        this.imp().mode_select.set_sensitive(true);
+                        let bpp2 = BGModeTwo::iter().nth(this.imp().mode_select.selected() as usize).expect("shouldn't happen");
+                        *this.imp().bg_mode.borrow_mut() = BGMode::Two(bpp2);
+                        this.emit_by_name::<()>("bg-mode-changed", &[]);
+                    },
+                    Bpp::Four => {
+                        // disable dropdown
+                        this.imp().mode_select.set_sensitive(false);
+                        *this.imp().bg_mode.borrow_mut() = BGMode::Four;
+                        this.emit_by_name::<()>("bg-mode-changed", &[]);
+                    },
+                }
             }),
         );
     }

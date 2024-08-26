@@ -20,7 +20,7 @@
       <object class="GtkActionBar">
         <child type="start">
           <object class="GtkDropDown" id="mode_select">
-            <property name="tooltip-text">Set background mode</property>
+            <property name="tooltip-text">Set background mode (2bpp only)</property>
             <property name="model">
               <object class="GtkStringList" id="mode_list">
                 <!-- items populated in code -->

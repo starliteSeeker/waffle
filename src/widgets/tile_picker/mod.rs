@@ -64,9 +64,6 @@ impl TilePicker {
                     let Some(bpp) = parameter else {return};
                     let bpp = bpp.get::<String>().expect("parameter should have type String");
                     let bpp = Bpp::from_str(&bpp).expect("invalid bit depth");
-                    if bpp != tile_data.borrow().bpp() {
-                        this.emit_by_name::<()>("bpp-changed", &[&(bpp as u8)]);
-                    }
 
                     file_open_dialog(parent, move |path| {
                         match Tileset::from_path(&path, bpp) {
@@ -79,6 +76,7 @@ impl TilePicker {
                                 *this.imp().row_offset.borrow_mut() = 0;
                                 this.set_file(Some(path));
                                 this.emit_by_name::<()>("tile-changed", &[]);
+                                this.emit_by_name::<()>("bpp-changed", &[&(bpp as u8)]);
                             }
                         }
                     });
