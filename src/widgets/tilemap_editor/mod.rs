@@ -70,6 +70,7 @@ impl TilemapEditor {
         imp.tilemap_drawing.set_draw_func(
             clone!(@weak imp, @weak palette_data, @weak tile_data, @weak tile_size => move |_, cr, _, _| {
                 let _ = cr.save();
+                cr.set_antialias(gtk::cairo::Antialias::None);
                 match *imp.zoom_level.borrow() {
                     Zoom::Half => cr.scale(0.5, 0.5),
                     Zoom::One => (),
