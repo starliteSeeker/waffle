@@ -67,11 +67,8 @@ impl ObjectImpl for Window {
             self.tilemap_editor.clone(),
         );
 
-        self.color_picker.setup_all(
-            self.palette_picker.clone(),
-            self.palette_data.clone(),
-            bg_mode.clone(),
-        );
+        self.color_picker
+            .setup_all(self.palette_picker.clone(), self.palette_data.clone());
 
         self.tile_picker.setup_all(
             self.obj().clone(),
@@ -86,14 +83,11 @@ impl ObjectImpl for Window {
         self.tilemap_editor.setup_all(
             self.palette_data.clone(),
             self.tile_data.clone(),
-            bg_mode.clone(),
             self.tile_picker.imp().tile_size.clone(),
             self.palette_picker.clone(),
             self.tile_picker.clone(),
             self.obj().clone(),
         );
-
-        // self.test_button.set_action_name(Some("palette.test"));
     }
 
     fn signals() -> &'static [Signal] {

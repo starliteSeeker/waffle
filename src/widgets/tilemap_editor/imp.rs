@@ -13,7 +13,7 @@ use gtk::subclass::prelude::*;
 use gtk::{CompositeTemplate, DrawingArea, DropDown, ScrolledWindow, StringList, ToggleButton};
 use strum::IntoEnumIterator;
 
-use crate::data::list_items::{BGMode, Zoom};
+use crate::data::list_items::{BGMode, BGModeTwo, Zoom};
 use crate::data::tilemap::{Tile, Tilemap};
 
 #[derive(Properties, CompositeTemplate, Default)]
@@ -84,12 +84,12 @@ impl ObjectImpl for TilemapEditor {
             }));
 
         // setup bg mode dropdown
-        for i in BGMode::iter() {
+        for i in BGModeTwo::iter() {
             self.mode_list.append(&i.to_string());
         }
         self.mode_select
             .connect_selected_notify(clone!(@weak self as this => move |_| {
-                *this.bg_mode.borrow_mut() = BGMode::iter().nth(this.mode_select.selected() as usize).expect("shouldn't happen");
+                *this.bg_mode.borrow_mut() = BGMode::Two(BGModeTwo::iter().nth(this.mode_select.selected() as usize).expect("shouldn't happen"));
                 this.obj().emit_by_name::<()>("bg-mode-changed", &[]);
             }));
 
@@ -114,7 +114,6 @@ impl ObjectImpl for TilemapEditor {
                 this.curr_tile.borrow_mut().set_priority(btn.is_active());
             }));
 
-        // redraw canvas
         self.obj().connect_closure(
             "bg-mode-changed",
             false,

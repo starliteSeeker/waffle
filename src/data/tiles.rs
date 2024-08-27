@@ -2,11 +2,12 @@ use crate::data::palette::Palette;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::data::list_items::{BGMode, TileSize};
+use crate::data::list_items::{BGMode, Bpp, TileSize};
 use crate::TILE_W;
 
 pub struct Tile {
     chr: [u8; 64],
+    bpp: Bpp,
 }
 
 impl Tile {
@@ -25,7 +26,35 @@ impl Tile {
             chr[i] = (s[2 * a] >> (7 - b)) & 0b1; // bit 0
             chr[i] |= ((s[2 * a + 1] >> (7 - b)) & 0b1) << 1; // bit 1
         }
-        Some(Tile { chr })
+        Some(Tile { chr, bpp: Bpp::Two })
+    }
+
+    fn from_4bpp(s: &[u8]) -> Option<Self> {
+        // 8 * 8 pixels * 4 (bits/pixel) / 8 (bits/byte)
+        if s.len() != 32 {
+            return None;
+        }
+
+        // s = [bit 0 of pixels 0-7, bit 1 of pixels 0-7,
+        //      bit 0 of pixels 8-15, bit 1 of pixels 8-15,
+        //      ...
+        //      bit 0 of pixels 56-63, bit 1 of pixels 56-63,
+        //      bit 2 of pixels 0-7, bit 3 of pixels 0-7,
+        //      ...
+        //      bit 2 of pixels 56-63, bit 1 of pixels 56-63]
+        let mut chr = [0; 64];
+        for i in 0..64 {
+            let a = i / 8;
+            let b = i % 8;
+            chr[i] = (s[2 * a] >> (7 - b)) & 0b1; // bit 0
+            chr[i] |= ((s[2 * a + 1] >> (7 - b)) & 0b1) << 1; // bit 1
+            chr[i] |= ((s[16 + 2 * a] >> (7 - b)) & 0b1) << 2; // bit 2
+            chr[i] |= ((s[16 + 2 * a + 1] >> (7 - b)) & 0b1) << 3; // bit 3
+        }
+        Some(Tile {
+            chr,
+            bpp: Bpp::Four,
+        })
     }
 
     pub fn draw(
@@ -36,9 +65,8 @@ impl Tile {
         bg_mode: &BGMode,
     ) {
         let pxl_w = TILE_W / 8.0;
-        // TODO: assume 2bpp for now
         // collect pixels with same color, then draw the pixels together
-        let mut rects = vec![Vec::new(); bg_mode.bpp().to_val() as usize];
+        let mut rects = vec![Vec::new(); self.bpp.to_val() as usize];
 
         // (0, 0) as top left corner of tile
         for (j, c) in self.chr.into_iter().enumerate() {
@@ -70,13 +98,18 @@ impl Tile {
 pub struct Tileset {
     sel_idx: u16,
     pub tiles: Vec<Tile>,
+    bpp: Bpp,
 }
 
 impl Default for Tileset {
     fn default() -> Self {
         Tileset {
             sel_idx: 0,
-            tiles: vec![Tile { chr: [0; 64] }],
+            tiles: vec![Tile {
+                chr: [0; 64],
+                bpp: Bpp::Two,
+            }],
+            bpp: Bpp::Two,
         }
     }
 }
@@ -85,8 +118,8 @@ impl Tileset {
     // tile index is stored as 10-bit integer in tilemap::Tile
     const MAX: usize = 0b1 << 10;
 
-    pub fn from_path(path: &std::path::PathBuf) -> std::io::Result<Self> {
-        let mut content = std::fs::read(path)?;
+    pub fn from_path(path: &std::path::PathBuf, bpp: Bpp) -> std::io::Result<Self> {
+        let content = std::fs::read(path)?;
         let len = content.len();
         if len == 0 {
             return Err(std::io::Error::new(
@@ -94,38 +127,51 @@ impl Tileset {
                 "file has length 0",
             ));
         }
-        let align = 8 * 8 * 2 / 8;
+        let align = 8 * 8 * bpp.bits() as usize / 8;
         if len % align != 0 {
-            eprintln!("file does not align with {align} bytes, pad with 0");
-            content.resize(len + align - (len % align), 0);
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("file does not align with {align} bytes"),
+            ));
         }
 
         if len / align > Self::MAX {
-            eprintln!("tile count exceeds maximum of {} tiles", Self::MAX);
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                "file too large",
+                format!("tile count exceeds maximum of {} tiles", Self::MAX),
             ));
         }
 
         let mut tiles = Vec::new();
         for i in (0..len).step_by(align) {
-            tiles.push(Tile::from_2bpp(&content[i..i + align]).unwrap());
+            let tile = match bpp {
+                Bpp::Two => Tile::from_2bpp(&content[i..i + align]).unwrap(),
+                Bpp::Four => Tile::from_4bpp(&content[i..i + align]).unwrap(),
+            };
+            tiles.push(tile);
         }
-        Ok(Tileset { sel_idx: 0, tiles })
+        Ok(Tileset {
+            sel_idx: 0,
+            tiles,
+            bpp,
+        })
     }
 
     pub fn get_idx(&self) -> u16 {
         self.sel_idx
     }
 
-    // return true if vale changed
+    // return true if value changed
     pub fn set_idx(&mut self, new_idx: u16) -> bool {
         if new_idx < self.get_size() as u16 && new_idx != self.sel_idx {
             self.sel_idx = new_idx;
             return true;
         }
         false
+    }
+
+    pub fn bpp(&self) -> Bpp {
+        self.bpp
     }
 
     pub fn get_size(&self) -> usize {

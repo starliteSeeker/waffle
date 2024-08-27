@@ -7,7 +7,6 @@ use gtk::glib::{self, closure_local, object::ObjectExt};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 
-use crate::data::list_items::BGMode;
 use crate::data::palette::Palette;
 
 glib::wrapper! {
@@ -18,20 +17,14 @@ glib::wrapper! {
 }
 
 impl ColorPicker {
-    pub fn setup_all<O: ObjectExt>(
-        &self,
-        palette_obj: O,
-        palette_data: Rc<RefCell<Palette>>,
-        bg_mode: Rc<RefCell<BGMode>>,
-    ) {
-        self.setup_signal_connection(palette_obj, palette_data, bg_mode);
+    pub fn setup_all<O: ObjectExt>(&self, palette_obj: O, palette_data: Rc<RefCell<Palette>>) {
+        self.setup_signal_connection(palette_obj, palette_data);
     }
 
     fn setup_signal_connection<O: ObjectExt>(
         &self,
         palette_obj: O,
         palette_data: Rc<RefCell<Palette>>,
-        bg_mode: Rc<RefCell<BGMode>>,
     ) {
         palette_obj.connect_closure(
             "color-idx-changed",
@@ -55,7 +48,7 @@ impl ColorPicker {
             closure_local!(@weak-allow-none self as this, @weak-allow-none palette_data => move |_: O| {
                 let Some(this) = this else {return};
                 let Some(palette_data) = palette_data else {return};
-                let (r, g, b) = palette_data.borrow().curr_color(&bg_mode.borrow()).to_tuple();
+                let (r, g, b) = palette_data.borrow().curr_color().to_tuple();
                 if r != this.red() || g != this.green() || b != this.blue() {
                     this.set_red(r);
                     this.set_green(g);

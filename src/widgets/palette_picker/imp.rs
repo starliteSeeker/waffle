@@ -61,10 +61,6 @@ impl ObjectImpl for PalettePicker {
         SIGNALS.get_or_init(|| {
             vec![
                 Signal::builder("palette-changed").build(),
-                // parameter: new-idx (index of color 0 of new palette)
-                Signal::builder("palette-idx-changed")
-                    .param_types([u8::static_type()])
-                    .build(),
                 // parameters: new-idx, red, green, blue
                 Signal::builder("color-idx-changed")
                     .param_types([

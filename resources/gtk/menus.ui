@@ -52,8 +52,14 @@
     <submenu>
       <attribute name="label">Tileset</attribute>
       <item>
-        <attribute name="label">Open</attribute>
+        <attribute name="label">Open 2bpp</attribute>
         <attribute name="action">tiles.open</attribute>
+        <attribute name="target">Two</attribute>
+      </item>
+      <item>
+        <attribute name="label">Open 4bpp</attribute>
+        <attribute name="action">tiles.open</attribute>
+        <attribute name="target">Four</attribute>
       </item>
       <item>
         <attribute name="label">Reload</attribute>

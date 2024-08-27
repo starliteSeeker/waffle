@@ -53,16 +53,12 @@ impl PalettePicker {
             // account for y scroll when calculating correct idx
             let yy = y + this.imp().palette_scroll.vadjustment().value();
             let new_idx = (yy / TILE_W) as u8 * 16 + (x / TILE_W) as u8;
-            let bg_mode = &*this.imp().bg_mode.get().unwrap().borrow();
-            let (pal_changed, col_changed) = palette_data.borrow_mut().set_idx(new_idx, bg_mode);
+            let idx_changed = palette_data.borrow_mut().set_idx(new_idx);
 
             // emit signals
-            if col_changed {
-                let (r, g, b) = palette_data.borrow().curr_color(bg_mode).to_tuple();
+            if idx_changed {
+                let (r, g, b) = palette_data.borrow().curr_color().to_tuple();
                 this.emit_by_name::<()>("color-idx-changed", &[&new_idx, &r, &g, &b]);
-            }
-            if pal_changed {
-                this.emit_by_name::<()>("palette-idx-changed", &[&(palette_data.borrow().pal_sel)]);
             }
         }));
         self.imp().palette_scroll.add_controller(gesture);
@@ -243,9 +239,8 @@ impl PalettePicker {
                 // update color at color_idx
                 let Some(this) = this else {return};
                 let Some(palette_data) = palette_data else {return};
-                let Some(bg_mode) = this.imp().bg_mode.get() else {return};
 
-                if palette_data.borrow_mut().set_curr(red, green, blue, &bg_mode.borrow()) {
+                if palette_data.borrow_mut().set_curr(red, green, blue) {
                     this.emit_by_name::<()>("palette-changed", &[]);
                 }
             }),
@@ -257,11 +252,10 @@ impl PalettePicker {
             closure_local!(@weak-allow-none self as this, @weak-allow-none palette_data => move |_: M| {
                 let Some(this) = this else {return};
                 let Some(palette_data) = palette_data else {return};
-                let Some(bg_mode) = this.imp().bg_mode.get() else {return};
                 this.imp().palette_drawing.queue_draw();
 
-                let (r, g, b) = palette_data.borrow().curr_color(&bg_mode.borrow()).to_tuple();
-                let curr_idx = palette_data.borrow().curr_idx(&bg_mode.borrow());
+                let (r, g, b) = palette_data.borrow().curr_color().to_tuple();
+                let curr_idx = palette_data.borrow().sel_idx;
                 this.emit_by_name::<()>("color-idx-changed", &[&curr_idx, &r, &g, &b]);
             }),
         );
@@ -318,7 +312,9 @@ impl PalettePicker {
                 let _ = cr.restore();
 
                 // draw current palette group outline
-                let pal_start_idx = bg_mode.palette_offset() + bg_mode.bpp().to_val() * palette_data.borrow().pal_sel;
+                // let pal_start_idx = bg_mode.palette_offset() + bg_mode.bpp().to_val() * palette_data.borrow().pal_sel;
+                let color_idx =  palette_data.borrow().sel_idx;
+                let pal_start_idx = color_idx - (color_idx % bg_mode.bpp().to_val());
                 let x_offset = (pal_start_idx % 16) as f64 * TILE_W;
                 let y_offset = (pal_start_idx / 16) as f64 * TILE_W;
                 cr.rectangle(x_offset, y_offset, TILE_W * bg_mode.bpp().to_val() as f64, TILE_W);
@@ -329,8 +325,8 @@ impl PalettePicker {
                 let _ = cr.stroke();
 
                 // draw current color outline
-                let x_offset = (palette_data.borrow().curr_idx(&bg_mode) % 16) as f64 * TILE_W;
-                let y_offset = (palette_data.borrow().curr_idx(&bg_mode) / 16) as f64 * TILE_W;
+                let x_offset = (color_idx % 16) as f64 * TILE_W;
+                let y_offset = (color_idx / 16) as f64 * TILE_W;
                 cr.rectangle(x_offset, y_offset, TILE_W, TILE_W);
                 cr.clip_preserve();
                 cr.set_line_width(4.0);

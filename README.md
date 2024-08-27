@@ -70,12 +70,77 @@ To convert from RGB24 to BGR555 (when importing), the top 5 bits of each color i
 
 This is the format used by YY-CHR, by going to `Palette > Save palette(*.pal)...`.
 
+## Tileset files
+
+Tileset can either be in 2bpp or 4bpp format. This can be chosen by opening the file through `Tileset > Open 2bpp` or `Tileset > Open 4bpp`.
+
+### 2bpp
+
+An example of this format can be found [here](examples/tileset.bin).
+
+Each pixel takes up 2 bits, and each 8-by-8 tile takes up 16 bytes. Data is stored row-wise, with bit 0 of each pixel stored first, then bit 1 of each pixel. 
+
+```text
+tile                           ...                 0 ... 
+row                  0         ...                 7 ... 
+data 00000000 11111111 0000000 ... 00000000 11111111 ... 
+     |      | |      |
+     |      | |      `bit 1 of the rightmost pixel
+     |      | `bit 1 of the leftmost pixel
+     |      `bit 0 of the rightmost pixel
+     `bit 0 of the leftmost pixel 
+```
+
+### 4bpp
+
+Each pixel takes up 4 bits, and each tile takes up 32 bytes. Bits 0 and 1 of a tile is stored first, similar to the 2bpp format, then bits 2 and 3 are stored.
+
+```text
+tile                            ...                   
+row                  0          ...                 7 
+data 00000000 11111111 00000000 ... 00000000 11111111 
+     |      | |      |
+     |      | |      `bit 1 of the rightmost pixel
+     |      | `bit 1 of the leftmost pixel
+     |      `bit 0 of the rightmost pixel
+     `bit 0 of the leftmost pixel 
+
+tile                            ...                 0 ...
+row                  0          ...                 7 ...
+data 22222222 33333333 22222222 ... 22222222 33333333 ...
+     |      | |      |
+     |      | |      `bit 3 of the rightmost pixel
+     |      | `bit 3 of the leftmost pixel
+     |      `bit 2 of the rightmost pixel
+     `bit 2 of the leftmost pixel 
+```
+
+## Tilemap files
+
+An example of this format can be found [here](examples/tilemap.bin).
+
+The file size is always 2048 bytes. Each tilemap tile takes up 2 bytes, and tiles are arranged as a 32-by-32 square.
+
+```text
+tile                 0 ...
+byte        0        1 ...
+data tttttttt vhpccctt ...
+
+bits 1-0 of byte 1 and bits 7-0 of byte 0 stores tile index
+bits 4-2 of byte 1 stores palette index
+bits 5 stores priority
+bits 6 stores horizontal flip
+bits 7 stores vertical flip
+```
+
+In the 4bpp format, only the first 128 colors can be used, with the palette index pointing to the 16-color palette used by the tile.
+In the 2bpp format, only a 32-color subset can be used, with the palette index further narrowing it down to a 4-color palette. 
+
 # Future plans
 
 Not much. If I ever feel like it, some important/quality-of-life features to add include:
 
 - undo/redo
-- 4bpp backgrounds
 - select mode on tilemap
 - different import/export file formats
 - layout resposive to window resize

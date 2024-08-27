@@ -97,6 +97,9 @@ impl ObjectImpl for TilePicker {
                     .build(),
                 Signal::builder("tile-changed").build(),
                 Signal::builder("tile-size-changed").build(),
+                Signal::builder("bpp-changed")
+                    .param_types([u8::static_type()])
+                    .build(),
             ]
         })
     }
