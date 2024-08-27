@@ -133,7 +133,6 @@ impl Palette {
     }
 
     pub fn get_relative(&self, color_idx: u8, bg_mode: &BGMode) -> Color {
-        // let i = bg_mode.palette_offset() + self.pal_sel * bg_mode.bpp().to_val() + color_idx;
         let i = self.sel_idx - (self.sel_idx % bg_mode.bpp().to_val()) + color_idx;
         self.pal[i as usize]
     }
