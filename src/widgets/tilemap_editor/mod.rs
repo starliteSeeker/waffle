@@ -80,6 +80,7 @@ impl TilemapEditor {
             }),
         );
     }
+
     fn setup_signal_connection<P: WidgetExt, T: WidgetExt>(&self, palette_obj: P, tile_obj: T) {
         palette_obj.connect_closure(
             "palette-changed",
