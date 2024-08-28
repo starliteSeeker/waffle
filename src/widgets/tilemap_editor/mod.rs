@@ -2,7 +2,6 @@ mod imp;
 
 use std::cell::RefCell;
 use std::fs::File;
-use std::io::Write;
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -174,10 +173,8 @@ impl TilemapEditor {
                 let Some(filepath) = this.file() else {return};
                 println!("save tilemap: {filepath:?}");
                 match File::create(filepath) {
-                    Ok(mut f) => {
-                        for c in this.imp().map_data.borrow().tiles {
-                            let _ = f.write_all(&c.into_bytes());
-                        }
+                    Ok(f) => {
+                        let _ = this.imp().map_data.borrow().write_to_file(&f);
                     },
                     Err(e) => eprintln!("Error saving file: {e}"),
                 }
@@ -189,10 +186,8 @@ impl TilemapEditor {
                 file_save_dialog(parent, move |_, filepath| {
                     println!("save tilemap: {filepath:?}");
                     match File::create(filepath.clone()) {
-                        Ok(mut f) => {
-                            for c in this.imp().map_data.borrow().tiles {
-                                let _ = f.write_all(&c.into_bytes());
-                            }
+                        Ok(f) => {
+                            let _ = this.imp().map_data.borrow().write_to_file(&f);
                             this.set_file(Some(filepath));
                         },
                         Err(e) => eprintln!("Error saving file: {e}"),

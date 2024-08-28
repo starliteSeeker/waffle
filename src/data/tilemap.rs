@@ -1,4 +1,6 @@
 use std::cell::RefCell;
+use std::fs::File;
+use std::io::Write;
 use std::mem::{self, MaybeUninit};
 use std::rc::Rc;
 
@@ -20,7 +22,7 @@ pub struct Tile {
 }
 
 pub struct Tilemap {
-    pub tiles: [Tile; 32 * 32],
+    tiles: [Tile; 32 * 32],
 }
 
 impl Default for Tilemap {
@@ -55,6 +57,13 @@ impl Tilemap {
                 unsafe { mem::transmute::<_, [Tile; 32 * 32]>(data) }
             },
         })
+    }
+
+    pub fn write_to_file(&self, mut f: &File) -> std::io::Result<()> {
+        for c in self.tiles {
+            f.write_all(&c.into_bytes())?;
+        }
+        Ok(())
     }
 
     // return true if new tile is different from old one
