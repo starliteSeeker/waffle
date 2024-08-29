@@ -119,7 +119,7 @@ data 22222222 33333333 22222222 ... 22222222 33333333 ...
 
 An example of this format can be found [here](examples/tilemap.bin).
 
-The file size is always 2048 bytes. Each tilemap tile takes up 2 bytes, and tiles are arranged as a 32-by-32 square.
+The file size is usually 2048 bytes. Each tilemap tile takes up 2 bytes, and tiles are arranged as a 32-by-32 square. For convenience, files storing less than 32x32 tiles are also accepted.
 
 ```text
 tile                 0 ...
