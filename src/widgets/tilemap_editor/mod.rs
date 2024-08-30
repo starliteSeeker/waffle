@@ -12,7 +12,7 @@ use glib::clone;
 use glib::closure_local;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-use gtk::GestureClick;
+use gtk::GestureDrag;
 use gtk::{gio, glib};
 
 use crate::data::list_items::{BGMode, BGModeTwo, Bpp, TileSize, Zoom};
@@ -46,17 +46,55 @@ impl TilemapEditor {
     }
 
     fn setup_gesture(&self) {
-        let click_event = GestureClick::new();
-        click_event.connect_released(clone!(@weak self as this => move |_, _, x, y| {
+        let drag_event = GestureDrag::new();
+        drag_event.connect_drag_begin(clone!(@weak self as this => move |_, x, y| {
             let imp = this.imp();
-            let tile_w = crate::TILE_W * imp.zoom_level.borrow().to_val();
-            let new_idx = (y / tile_w) as u32 * 32 + (x / tile_w) as u32;
+
+            // calculate tile index
+            let Some(new_idx) = this.cursor_to_idx(x, y) else {return};
+
             // emit signal
             if imp.map_data.borrow_mut().set_tile(new_idx, &*imp.curr_tile.borrow()) {
                 this.emit_by_name::<()>("tilemap-changed", &[]);
             }
         }));
-        self.imp().tilemap_drawing.add_controller(click_event);
+        drag_event.connect_drag_update(clone!(@weak self as this => move |drag, dx, dy| {
+            let imp = this.imp();
+
+            // calculate tile index
+            let Some((x, y)) = drag.start_point() else {return};
+            let Some(new_idx) = this.cursor_to_idx(x + dx, y + dy) else {return};
+
+            // emit signal
+            if imp.map_data.borrow_mut().set_tile(new_idx, &*imp.curr_tile.borrow()) {
+                this.emit_by_name::<()>("tilemap-changed", &[]);
+            }
+        }));
+        self.imp().tilemap_drawing.add_controller(drag_event);
+    }
+
+    fn cursor_to_idx(&self, x: f64, y: f64) -> Option<u32> {
+        let imp = self.imp();
+        let tile_w = crate::TILE_W * imp.zoom_level.borrow().to_val();
+
+        let scroll = &imp.tilemap_scroll;
+        if x < scroll.hadjustment().value()
+            || y < scroll.vadjustment().value()
+            || x >= scroll.width() as f64 + scroll.hadjustment().value()
+            || y >= scroll.height() as f64 + scroll.vadjustment().value()
+        {
+            // cursor position outside of tilemap_scroll
+            return None;
+        }
+
+        let (tile_x, tile_y) = (x / tile_w, y / tile_w);
+        if tile_x < 0.0 || tile_y < 0.0 || tile_x >= 32.0 || tile_y >= 32.0 {
+            // cursor position outside of tilemap drawing
+            return None;
+        }
+
+        let new_idx = tile_y.floor() as u32 * 32 + tile_x.floor() as u32;
+        Some(new_idx)
     }
 
     fn setup_draw(
