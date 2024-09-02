@@ -33,6 +33,10 @@ pub struct TilemapEditor {
     #[template_child]
     pub mode_list: TemplateChild<StringList>,
     #[template_child]
+    pub pen_draw_btn: TemplateChild<ToggleButton>,
+    #[template_child]
+    pub rect_fill_btn: TemplateChild<ToggleButton>,
+    #[template_child]
     pub flip_x_btn: TemplateChild<ToggleButton>,
     #[template_child]
     pub flip_y_btn: TemplateChild<ToggleButton>,
@@ -47,6 +51,8 @@ pub struct TilemapEditor {
 
     #[property(get, set, nullable)]
     pub file: RefCell<Option<PathBuf>>,
+
+    pub curr_drag: RefCell<Option<((u32, u32), (u32, u32))>>,
 }
 
 // The central trait for subclassing a GObject

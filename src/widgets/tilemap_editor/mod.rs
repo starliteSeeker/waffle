@@ -53,8 +53,11 @@ impl TilemapEditor {
             // calculate tile index
             let Some(new_idx) = this.cursor_to_idx(x, y) else {return};
 
-            // emit signal
-            if imp.map_data.borrow_mut().set_tile(new_idx, &*imp.curr_tile.borrow()) {
+            if imp.rect_fill_btn.is_active() {
+                let (idx_x, idx_y) = (new_idx % 32, new_idx / 32);
+                *imp.curr_drag.borrow_mut() = Some(((idx_x, idx_y), (idx_x, idx_y)));
+                this.emit_by_name::<()>("tilemap-changed", &[]);
+            } else if imp.map_data.borrow_mut().set_tile(new_idx, &*imp.curr_tile.borrow()) {
                 this.emit_by_name::<()>("tilemap-changed", &[]);
             }
         }));
@@ -65,8 +68,43 @@ impl TilemapEditor {
             let Some((x, y)) = drag.start_point() else {return};
             let Some(new_idx) = this.cursor_to_idx(x + dx, y + dy) else {return};
 
+            let (idx_x, idx_y) = (new_idx % 32, new_idx / 32);
+
+            let mut curr_drag = imp.curr_drag.borrow_mut();
+
             // emit signal
-            if imp.map_data.borrow_mut().set_tile(new_idx, &*imp.curr_tile.borrow()) {
+            if imp.rect_fill_btn.is_active() {
+                if curr_drag.is_some_and(|(_, end)| end != (idx_x, idx_y)) {
+                    *curr_drag = curr_drag.map(|(start, _)| (start, (idx_x, idx_y)));
+                    this.emit_by_name::<()>("tilemap-changed", &[]);
+                }
+            }
+            else if imp.map_data.borrow_mut().set_tile(new_idx, &*imp.curr_tile.borrow())
+            {
+                this.emit_by_name::<()>("tilemap-changed", &[]);
+            }
+        }));
+        drag_event.connect_drag_end(clone!(@weak self as this => move |_, _, _| {
+            let imp = this.imp();
+            if imp.rect_fill_btn.is_active() {
+                // sort rectangle fill boundaries
+                let ((x_min, x_max), (y_min, y_max)) = if let Some(((x1, y1), (x2, y2))) = *imp.curr_drag.borrow() {
+                    (
+                        (x1.min(x2) as usize, x1.max(x2) as usize),
+                        (y1.min(y2) as usize, y1.max(y2) as usize),
+                    )
+                } else {
+                    return;
+                };
+                // update tilemap
+                let mut map_data = imp.map_data.borrow_mut();
+                for i in y_min..=y_max {
+                    for j in x_min..=x_max {
+                        map_data.set_tile((i * 32 + j) as u32, &*imp.curr_tile.borrow());
+                    }
+                }
+                // reset selection
+                *imp.curr_drag.borrow_mut() = None;
                 this.emit_by_name::<()>("tilemap-changed", &[]);
             }
         }));
@@ -113,7 +151,7 @@ impl TilemapEditor {
                     Zoom::One => (),
                     Zoom::Two => cr.scale(2.0, 2.0),
                 }
-                imp.map_data.borrow().draw(cr, palette_data, tile_data, imp.bg_mode.clone(), tile_size);
+                imp.map_data.borrow().draw(cr, palette_data, tile_data, imp.bg_mode.clone(), tile_size, *imp.curr_drag.borrow(), *imp.curr_tile.borrow());
                 let _ = cr.restore();
             }),
         );
