@@ -15,7 +15,7 @@ use gtk::subclass::prelude::*;
 use gtk::GestureDrag;
 use gtk::{gio, glib};
 
-use crate::data::list_items::{BGMode, BGModeTwo, Bpp, TileSize, Zoom};
+use crate::data::list_items::{BGMode, BGModeTwo, Bpp, DrawMode, TileSize, Zoom};
 use crate::data::palette::Palette;
 use crate::data::tilemap::Tilemap;
 use crate::data::tiles::Tileset;
@@ -53,12 +53,17 @@ impl TilemapEditor {
             // calculate tile index
             let Some(new_idx) = this.cursor_to_idx(x, y) else {return};
 
-            if imp.rect_fill_btn.is_active() {
-                let (idx_x, idx_y) = (new_idx % 32, new_idx / 32);
-                *imp.curr_drag.borrow_mut() = Some(((idx_x, idx_y), (idx_x, idx_y)));
-                this.emit_by_name::<()>("tilemap-changed", &[]);
-            } else if imp.map_data.borrow_mut().set_tile(new_idx, &*imp.curr_tile.borrow()) {
-                this.emit_by_name::<()>("tilemap-changed", &[]);
+            match imp.draw_mode() {
+                DrawMode::Pen => {
+                    if imp.map_data.borrow_mut().set_tile(new_idx, &*imp.curr_tile.borrow()) {
+                        this.emit_by_name::<()>("tilemap-changed", &[]);
+                    }
+                },
+                DrawMode::RectFill => {
+                    let (idx_x, idx_y) = (new_idx % 32, new_idx / 32);
+                    *imp.curr_drag.borrow_mut() = Some(((idx_x, idx_y), (idx_x, idx_y)));
+                    this.emit_by_name::<()>("tilemap-changed", &[]);
+                },
             }
         }));
         drag_event.connect_drag_update(clone!(@weak self as this => move |drag, dx, dy| {
@@ -72,40 +77,45 @@ impl TilemapEditor {
 
             let mut curr_drag = imp.curr_drag.borrow_mut();
 
-            // emit signal
-            if imp.rect_fill_btn.is_active() {
-                if curr_drag.is_some_and(|(_, end)| end != (idx_x, idx_y)) {
-                    *curr_drag = curr_drag.map(|(start, _)| (start, (idx_x, idx_y)));
-                    this.emit_by_name::<()>("tilemap-changed", &[]);
-                }
-            }
-            else if imp.map_data.borrow_mut().set_tile(new_idx, &*imp.curr_tile.borrow())
-            {
-                this.emit_by_name::<()>("tilemap-changed", &[]);
+            match imp.draw_mode() {
+                DrawMode::Pen => {
+                    if imp.map_data.borrow_mut().set_tile(new_idx, &*imp.curr_tile.borrow()) {
+                        this.emit_by_name::<()>("tilemap-changed", &[]);
+                    }
+                },
+                DrawMode::RectFill => {
+                    if curr_drag.is_some_and(|(_, end)| end != (idx_x, idx_y)) {
+                        *curr_drag = curr_drag.map(|(start, _)| (start, (idx_x, idx_y)));
+                        this.emit_by_name::<()>("tilemap-changed", &[]);
+                    }
+                },
             }
         }));
         drag_event.connect_drag_end(clone!(@weak self as this => move |_, _, _| {
             let imp = this.imp();
-            if imp.rect_fill_btn.is_active() {
-                // sort rectangle fill boundaries
-                let ((x_min, x_max), (y_min, y_max)) = if let Some(((x1, y1), (x2, y2))) = *imp.curr_drag.borrow() {
-                    (
-                        (x1.min(x2) as usize, x1.max(x2) as usize),
-                        (y1.min(y2) as usize, y1.max(y2) as usize),
-                    )
-                } else {
-                    return;
-                };
-                // update tilemap
-                let mut map_data = imp.map_data.borrow_mut();
-                for i in y_min..=y_max {
-                    for j in x_min..=x_max {
-                        map_data.set_tile((i * 32 + j) as u32, &*imp.curr_tile.borrow());
+            match imp.draw_mode() {
+                DrawMode::RectFill => {
+                    // sort rectangle fill boundaries
+                    let ((x_min, x_max), (y_min, y_max)) = if let Some(((x1, y1), (x2, y2))) = *imp.curr_drag.borrow() {
+                        (
+                            (x1.min(x2) as usize, x1.max(x2) as usize),
+                            (y1.min(y2) as usize, y1.max(y2) as usize),
+                        )
+                    } else {
+                        return;
+                    };
+                    // update tilemap
+                    let mut map_data = imp.map_data.borrow_mut();
+                    for i in y_min..=y_max {
+                        for j in x_min..=x_max {
+                            map_data.set_tile((i * 32 + j) as u32, &*imp.curr_tile.borrow());
+                        }
                     }
-                }
-                // reset selection
-                *imp.curr_drag.borrow_mut() = None;
-                this.emit_by_name::<()>("tilemap-changed", &[]);
+                    // reset selection
+                    *imp.curr_drag.borrow_mut() = None;
+                    this.emit_by_name::<()>("tilemap-changed", &[]);
+                },
+                _ => {},
             }
         }));
         self.imp().tilemap_drawing.add_controller(drag_event);

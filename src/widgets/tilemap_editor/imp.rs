@@ -13,7 +13,7 @@ use gtk::subclass::prelude::*;
 use gtk::{CompositeTemplate, DrawingArea, DropDown, ScrolledWindow, StringList, ToggleButton};
 use strum::IntoEnumIterator;
 
-use crate::data::list_items::{BGMode, BGModeTwo, Zoom};
+use crate::data::list_items::{BGMode, BGModeTwo, DrawMode, Zoom};
 use crate::data::tilemap::{Tile, Tilemap};
 
 #[derive(Properties, CompositeTemplate, Default)]
@@ -33,9 +33,9 @@ pub struct TilemapEditor {
     #[template_child]
     pub mode_list: TemplateChild<StringList>,
     #[template_child]
-    pub pen_draw_btn: TemplateChild<ToggleButton>,
+    pen_draw_btn: TemplateChild<ToggleButton>,
     #[template_child]
-    pub rect_fill_btn: TemplateChild<ToggleButton>,
+    rect_fill_btn: TemplateChild<ToggleButton>,
     #[template_child]
     pub flip_x_btn: TemplateChild<ToggleButton>,
     #[template_child]
@@ -142,3 +142,16 @@ impl ObjectImpl for TilemapEditor {
 }
 impl WidgetImpl for TilemapEditor {}
 impl BoxImpl for TilemapEditor {}
+
+impl TilemapEditor {
+    pub fn draw_mode(&self) -> DrawMode {
+        if self.pen_draw_btn.is_active() {
+            DrawMode::Pen
+        } else if self.rect_fill_btn.is_active() {
+            DrawMode::RectFill
+        } else {
+            eprintln!("cannot determine draw mode, use default value");
+            DrawMode::default()
+        }
+    }
+}
