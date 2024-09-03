@@ -10,5 +10,7 @@
   </gresource>
   <gresource prefix="/com/example/waffle/icons/48x48/status">
     <file preprocess="xml-stripblanks" alias="tile-priority.svg">icons/tile-priority.svg</file>
+    <file preprocess="xml-stripblanks" alias="pen-draw.svg">icons/pen-draw.svg</file>
+    <file preprocess="xml-stripblanks" alias="rect-fill.svg">icons/rect-fill.svg</file>
   </gresource>
 </gresources>

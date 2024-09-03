@@ -149,3 +149,10 @@ impl BGMode {
         return Some(idx);
     }
 }
+
+#[derive(Default, EnumString)]
+pub enum DrawMode {
+    #[default]
+    Pen,
+    RectFill,
+}

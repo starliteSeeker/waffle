@@ -38,7 +38,30 @@
             </property>
           </object>
         </child>
-        <child type="start">
+        <child type="center">
+          <object class="GtkBox">
+            <property name="orientation">horizontal</property>
+            <child>
+              <object class="GtkToggleButton" id="pen_draw_btn">
+                <property name="label">pen draw</property>
+                <property name="icon-name">pen-draw</property>
+                <property name="tooltip-text">pen draw tool</property>
+                <property name="active">true</property>
+                <property name="can-focus">false</property> <!-- disable tab-focus -->
+              </object>
+            </child>
+            <child>
+              <object class="GtkToggleButton" id="rect_fill_btn">
+                <property name="label">rect fill</property>
+                <property name="icon-name">rect-fill</property>
+                <property name="tooltip-text">rectangle fill tool</property>
+                <property name="can-focus">false</property>
+                <property name="group">pen_draw_btn</property>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child type="end">
           <object class="GtkBox">
             <property name="orientation">horizontal</property>
             <child>

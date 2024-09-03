@@ -87,15 +87,37 @@ impl Tilemap {
         tile_data: Rc<RefCell<Tileset>>,
         bg_mode: Rc<RefCell<BGMode>>,
         tile_size: Rc<RefCell<TileSize>>,
+        curr_drag: Option<((u32, u32), (u32, u32))>,
+        curr_tile: Tile,
     ) {
+        // fallback color
         cr.set_source_rgb(0.4, 0.4, 0.4);
         let _ = cr.paint();
 
         let bg_mode = bg_mode.borrow();
 
+        // sort rectangle fill boundaries
+        let ((x_min, x_max), (y_min, y_max)) = if let Some(((x1, y1), (x2, y2))) = curr_drag {
+            (
+                (x1.min(x2) as usize, x1.max(x2) as usize),
+                (y1.min(y2) as usize, y1.max(y2) as usize),
+            )
+        } else {
+            ((1, 0), (1, 0)) // impossible arrangement, range check will return false
+        };
+
         for (i, tile) in self.tiles.iter().enumerate() {
-            let x_offset = (i % 32) as f64 * crate::TILE_W;
-            let y_offset = (i / 32) as f64 * crate::TILE_W;
+            let ix = i % 32;
+            let iy = i / 32;
+            let x_offset = ix as f64 * crate::TILE_W;
+            let y_offset = iy as f64 * crate::TILE_W;
+
+            // draw ractangle fill graphics if index is in range
+            let tile = if ix >= x_min && ix <= x_max && iy >= y_min && iy <= y_max {
+                curr_tile
+            } else {
+                *tile
+            };
 
             let _ = cr.save();
             cr.translate(x_offset, y_offset);
