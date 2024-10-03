@@ -1,4 +1,7 @@
+use gtk::glib::{FixedSizeVariantArray, Variant, VariantTy};
+use gtk::prelude::*;
 use modular_bitfield::prelude::*;
+use std::borrow::Cow;
 
 #[bitfield]
 #[derive(PartialEq, Eq, Debug, Copy, Clone, Default)]
@@ -8,6 +11,31 @@ pub struct Color {
     pub blue: B5,
     #[skip]
     __: B1,
+}
+
+impl StaticVariantType for Color {
+    fn static_variant_type() -> Cow<'static, VariantTy> {
+        <FixedSizeVariantArray<[u8; 2], u8>>::static_variant_type()
+    }
+}
+
+impl ToVariant for Color {
+    fn to_variant(&self) -> Variant {
+        Variant::array_from_fixed_array(&self.into_bytes())
+    }
+}
+
+impl FromVariant for Color {
+    fn from_variant(variant: &Variant) -> Option<Self> {
+        let s = Self::from_bytes(
+            variant
+                .fixed_array()
+                .expect("color variant type mismatch")
+                .try_into()
+                .expect("color variant bytearray mismatch"),
+        );
+        Some(s)
+    }
 }
 
 impl Color {

@@ -28,6 +28,7 @@ pub struct ColorPicker {
     #[template_child]
     pub blue_adj: TemplateChild<Adjustment>,
 
+    /* TODO clean up ? */
     #[property(get, set)]
     red: Cell<u8>,
     #[property(get, set)]
@@ -54,25 +55,6 @@ impl ObjectSubclass for ColorPicker {
 
 #[glib::derived_properties]
 impl ObjectImpl for ColorPicker {
-    fn constructed(&self) {
-        self.parent_constructed();
-
-        self.setup_binds();
-        self.setup_slider_change();
-
-        // color square drawing
-        self.color_square
-            .get()
-            .set_draw_func(clone!(@weak self as this => move |_, cr, _, _| {
-                // convert 0~31 to 0.0~1.0
-                let r = this.red.get() as f64 / 31.0;
-                let g = this.green.get() as f64 / 31.0;
-                let b = this.blue.get() as f64 / 31.0;
-                cr.set_source_rgb(r, g, b);
-                let _ = cr.paint();
-            }));
-    }
-
     fn signals() -> &'static [Signal] {
         static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
         SIGNALS.get_or_init(|| {

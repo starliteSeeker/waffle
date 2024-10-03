@@ -1,22 +1,26 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::OnceLock;
 
+use gio::{ActionEntry, SimpleActionGroup};
+use glib::clone;
 use glib::subclass::InitializingObject;
 use glib::subclass::Signal;
+use glib::Properties;
+use glib::{variant::Variant, VariantTy};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-use gtk::{glib, CompositeTemplate};
+use gtk::{gio, glib, CompositeTemplate};
 
-use crate::data::palette::Palette;
-use crate::data::tiles::Tileset;
-use crate::widgets::color_picker::ColorPicker;
-use crate::widgets::palette_picker::PalettePicker;
-use crate::widgets::tile_picker::TilePicker;
-use crate::widgets::tilemap_editor::TilemapEditor;
+use crate::data::{color::Color, palette::Palette, tiles::Tileset};
+use crate::widgets::{
+    color_picker::ColorPicker, palette_picker::PalettePicker, tile_picker::TilePicker,
+    tilemap_editor::TilemapEditor,
+};
 
-#[derive(CompositeTemplate, Default)]
+#[derive(CompositeTemplate, Properties, Default)]
 #[template(resource = "/com/example/waffle/window.ui")]
+#[properties(wrapper_type = super::Window)]
 pub struct Window {
     #[template_child]
     pub color_picker: TemplateChild<ColorPicker>,
@@ -26,6 +30,9 @@ pub struct Window {
     pub tilemap_editor: TemplateChild<TilemapEditor>,
     #[template_child]
     pub tile_picker: TemplateChild<TilePicker>,
+
+    #[property(get, set, builder(VariantTy::ARRAY))]
+    pub picker_color: RefCell<Option<Variant>>,
 
     pub palette_data: Rc<RefCell<Palette>>,
     pub tile_data: Rc<RefCell<Tileset>>,
@@ -53,11 +60,25 @@ impl ObjectSubclass for Window {
 }
 
 // Trait shared by all GObjects
+#[glib::derived_properties]
 impl ObjectImpl for Window {
     fn constructed(&self) {
         self.parent_constructed();
 
+        let obj = self.obj();
+
+        // initialize variables
+        obj.set_picker_color(Color::default().to_variant());
+
         let bg_mode = self.tilemap_editor.imp().bg_mode.clone();
+
+        self.color_picker.handle_action(&obj);
+        self.color_picker.render_widget(&obj);
+
+        /*
+        self.color_picker
+            .setup_all(self.palette_picker.clone(), self.palette_data.clone());
+        */
 
         self.palette_picker.setup_all(
             self.palette_data.clone(),
@@ -66,9 +87,6 @@ impl ObjectImpl for Window {
             bg_mode.clone(),
             self.tilemap_editor.clone(),
         );
-
-        self.color_picker
-            .setup_all(self.palette_picker.clone(), self.palette_data.clone());
 
         self.tile_picker.setup_all(
             self.obj().clone(),
@@ -88,6 +106,19 @@ impl ObjectImpl for Window {
             self.tile_picker.clone(),
             self.obj().clone(),
         );
+
+        // debug stuff
+        /* TODO remove when finishsed */
+        let action_debug = ActionEntry::builder("printstuff")
+            .activate(clone!(@weak self as this => move |_, _, _| {
+                println!("debug.printstuff");
+                let color = this.obj().picker_color().expect("picker_color setup error");
+                println!("{:?}", Color::from_variant(&color));
+            }))
+            .build();
+        let actions = SimpleActionGroup::new();
+        actions.add_action_entries([action_debug]);
+        self.obj().insert_action_group("debug", Some(&actions));
     }
 
     fn signals() -> &'static [Signal] {

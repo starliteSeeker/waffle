@@ -1,13 +1,11 @@
 mod imp;
 
-use std::cell::RefCell;
-use std::rc::Rc;
-
-use gtk::glib::{self, closure_local, object::ObjectExt};
+use gtk::glib::{self, clone};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 
-use crate::data::palette::Palette;
+use crate::data::{color::Color, palette::Palette};
+use crate::widgets::window::Window;
 
 glib::wrapper! {
     pub struct ColorPicker(ObjectSubclass<imp::ColorPicker>)
@@ -17,6 +15,57 @@ glib::wrapper! {
 }
 
 impl ColorPicker {
+    pub fn handle_action(&self, state: &Window) {
+        fn modify_color(state: &Window, f: impl Fn(Color) -> Color) {
+            let curr_color = state.picker_color().expect("picker_color not initialized");
+            let curr_color = Color::from_variant(&curr_color).expect("picker_color is not Color");
+            let new_color = f(curr_color);
+            if curr_color != new_color {
+                state.set_picker_color(new_color.to_variant());
+            }
+        }
+
+        // rgb sliders
+        let imp = self.imp();
+        imp.red_slider.connect_change_value(
+            clone!(@weak state => @default-return (false.into()), move |_, _, val| {
+                // change red value of picker color
+                modify_color(&state, |c| c.with_red(val.round() as u8));
+                false.into()
+            }),
+        );
+        imp.green_slider.connect_change_value(
+            clone!(@weak state => @default-return (false.into()), move |_, _, val| {
+                // change green value of picker color
+                modify_color(&state, |c| c.with_green(val.round() as u8));
+                false.into()
+            }),
+        );
+        imp.blue_slider.connect_change_value(
+            clone!(@weak state => @default-return (false.into()), move |_, _, val| {
+                // change blue value of picker color
+                modify_color(&state, |c| c.with_blue(val.round() as u8));
+                false.into()
+            }),
+        );
+    }
+
+    pub fn render_widget(&self, state: &Window) {
+        state.connect_picker_color_notify(clone!(@weak self as this => move |_| {
+            this.imp().color_square.queue_draw();
+        }));
+
+        self.imp().color_square
+            .set_draw_func(clone!(@weak state => move |_, cr, _, _| {
+                let curr_color = state.picker_color().expect("picker_color not initialized");
+                let curr_color = Color::from_variant(&curr_color).expect("picker_color is not Color");
+                let (r, g, b) = curr_color.to_cairo();
+                cr.set_source_rgb(r, g, b);
+                let _ = cr.paint();
+            }));
+    }
+
+    /*
     pub fn setup_all<O: ObjectExt>(&self, palette_obj: O, palette_data: Rc<RefCell<Palette>>) {
         self.setup_signal_connection(palette_obj, palette_data);
     }
@@ -67,4 +116,5 @@ impl ColorPicker {
             }),
         );
     }
+    */
 }
