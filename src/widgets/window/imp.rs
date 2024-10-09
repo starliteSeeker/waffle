@@ -7,12 +7,17 @@ use glib::clone;
 use glib::subclass::InitializingObject;
 use glib::subclass::Signal;
 use glib::Properties;
-use glib::{variant::Variant, VariantTy};
+use glib::{BoxedAnyObject, ByteArray};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{gio, glib, CompositeTemplate};
 
-use crate::data::{color::Color, palette::Palette, tiles::Tileset};
+use crate::data::{
+    color::Color,
+    list_items::{BGModeTwo, Bpp, TileSize, Zoom},
+    palette::Palette,
+    tiles::Tileset,
+};
 use crate::widgets::{
     color_picker::ColorPicker, palette_picker::PalettePicker, tile_picker::TilePicker,
     tilemap_editor::TilemapEditor,
@@ -31,8 +36,22 @@ pub struct Window {
     #[template_child]
     pub tile_picker: TemplateChild<TilePicker>,
 
-    #[property(get, set, builder(VariantTy::ARRAY))]
-    pub picker_color: RefCell<Option<Variant>>,
+    #[property(get, set)]
+    picker_color: RefCell<Option<ByteArray>>,
+
+    #[property(name = "palette-data", get, construct_only, explicit_notify)]
+    palette_data_2: RefCell<Option<BoxedAnyObject>>,
+    #[property(get, set)]
+    palette_sel_idx: Cell<u8>,
+
+    #[property(get, set, builder(Bpp::default()))]
+    pub tile_bpp: Cell<Bpp>,
+    #[property(get, set, builder(BGModeTwo::default()))]
+    pub bg_mode: Cell<BGModeTwo>,
+    #[property(get, set, builder(TileSize::default()))]
+    pub tile_size: Cell<TileSize>,
+    #[property(get, set, builder(Zoom::default()))]
+    pub tilemap_zoom: Cell<Zoom>,
 
     pub palette_data: Rc<RefCell<Palette>>,
     pub tile_data: Rc<RefCell<Tileset>>,
@@ -68,25 +87,15 @@ impl ObjectImpl for Window {
         let obj = self.obj();
 
         // initialize variables
-        obj.set_picker_color(Color::default().to_variant());
-
-        let bg_mode = self.tilemap_editor.imp().bg_mode.clone();
+        obj.set_picker_color(ByteArray::from(&Color::default().into_bytes()));
 
         self.color_picker.handle_action(&obj);
         self.color_picker.render_widget(&obj);
 
-        /*
-        self.color_picker
-            .setup_all(self.palette_picker.clone(), self.palette_data.clone());
-        */
+        self.palette_picker.handle_action(&obj);
+        self.palette_picker.render_widget(&obj);
 
-        self.palette_picker.setup_all(
-            self.palette_data.clone(),
-            self.obj().clone(),
-            self.color_picker.clone(),
-            bg_mode.clone(),
-            self.tilemap_editor.clone(),
-        );
+        let bg_mode = self.tilemap_editor.imp().bg_mode.clone();
 
         self.tile_picker.setup_all(
             self.obj().clone(),
@@ -111,9 +120,7 @@ impl ObjectImpl for Window {
         /* TODO remove when finishsed */
         let action_debug = ActionEntry::builder("printstuff")
             .activate(clone!(@weak self as this => move |_, _, _| {
-                println!("debug.printstuff");
-                let color = this.obj().picker_color().expect("picker_color setup error");
-                println!("{:?}", Color::from_variant(&color));
+                println!("debug");
             }))
             .build();
         let actions = SimpleActionGroup::new();

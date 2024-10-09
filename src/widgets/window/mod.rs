@@ -1,8 +1,11 @@
 mod imp;
 
 use glib::Object;
+use glib::{BoxedAnyObject, ByteArray};
 use gtk::Application;
 use gtk::{gio, glib};
+
+use crate::data::{color::Color, palette::RenameMePalette};
 
 glib::wrapper! {
     pub struct Window(ObjectSubclass<imp::Window>)
@@ -18,6 +21,34 @@ impl Window {
         Object::builder()
             .property("application", app)
             .property("show-menubar", true)
+            .property(
+                "palette-data",
+                Some(BoxedAnyObject::new(RenameMePalette::default())),
+            )
             .build()
+    }
+
+    pub fn picker_color_inner(&self) -> Color {
+        let curr_color = *self
+            .picker_color()
+            .expect("picker_color not initialized")
+            .first_chunk()
+            .expect("picker_color size mismatch");
+        Color::from_bytes(curr_color)
+    }
+
+    pub fn modify_picker_color(&self, f: impl Fn(Color) -> Color) {
+        let curr_color = self.picker_color_inner();
+        let new_color = f(curr_color);
+        if curr_color != new_color {
+            self.set_picker_color(ByteArray::from(&new_color.into_bytes()));
+        }
+    }
+
+    pub fn modify_palette_data(&self, f: impl Fn(&mut RenameMePalette) -> bool) {
+        let palette_data = self.palette_data().unwrap();
+        if f(&mut palette_data.borrow_mut::<RenameMePalette>()) {
+            self.notify_palette_data();
+        }
     }
 }

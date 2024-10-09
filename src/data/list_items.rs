@@ -2,8 +2,12 @@ use std::fmt;
 
 use strum::{EnumIter, EnumString};
 
-#[derive(EnumString, EnumIter, Debug, PartialEq, Eq, Copy, Clone)]
+use gtk::glib;
+
+#[derive(EnumString, EnumIter, Default, Debug, PartialEq, Eq, Copy, Clone, glib::Enum)]
+#[enum_type(name = "Bpp")]
 pub enum Bpp {
+    #[default]
     Two,
     Four,
 }
@@ -33,7 +37,8 @@ impl Bpp {
     }
 }
 
-#[derive(EnumIter, Default)]
+#[derive(EnumIter, Default, Debug, Copy, Clone, glib::Enum)]
+#[enum_type(name = "TileSize")]
 pub enum TileSize {
     #[default]
     Eight = 8,
@@ -49,7 +54,8 @@ impl fmt::Display for TileSize {
     }
 }
 
-#[derive(EnumIter, Default)]
+#[derive(EnumIter, Default, Debug, Copy, Clone, glib::Enum)]
+#[enum_type(name = "Zoom")]
 pub enum Zoom {
     Half,
     #[default]
@@ -77,7 +83,8 @@ impl Zoom {
     }
 }
 
-#[derive(EnumIter, Default)]
+#[derive(EnumIter, Default, Debug, Copy, Clone, glib::Enum)]
+#[enum_type(name = "BGModeTwo")]
 pub enum BGModeTwo {
     #[default]
     M0BG1,
@@ -108,6 +115,7 @@ impl BGModeTwo {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
 pub enum BGMode {
     Two(BGModeTwo),
     Four,

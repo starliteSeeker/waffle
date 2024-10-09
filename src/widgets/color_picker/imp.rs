@@ -1,17 +1,9 @@
-use std::cell::Cell;
-use std::sync::OnceLock;
-
-use glib::clone;
 use glib::subclass::InitializingObject;
-use glib::subclass::Signal;
-use glib::Properties;
-use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{glib, Adjustment, CompositeTemplate, DrawingArea, Scale};
 
-#[derive(CompositeTemplate, Properties, Default)]
+#[derive(CompositeTemplate, Default)]
 #[template(resource = "/com/example/waffle/color_picker.ui")]
-#[properties(wrapper_type = super::ColorPicker)]
 pub struct ColorPicker {
     #[template_child]
     pub color_square: TemplateChild<DrawingArea>,
@@ -27,14 +19,6 @@ pub struct ColorPicker {
     pub blue_slider: TemplateChild<Scale>,
     #[template_child]
     pub blue_adj: TemplateChild<Adjustment>,
-
-    /* TODO clean up ? */
-    #[property(get, set)]
-    red: Cell<u8>,
-    #[property(get, set)]
-    green: Cell<u8>,
-    #[property(get, set)]
-    blue: Cell<u8>,
 }
 
 // The central trait for subclassing a GObject
@@ -53,66 +37,6 @@ impl ObjectSubclass for ColorPicker {
     }
 }
 
-#[glib::derived_properties]
-impl ObjectImpl for ColorPicker {
-    fn signals() -> &'static [Signal] {
-        static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
-        SIGNALS.get_or_init(|| {
-            // parameter: red, green, blue
-            vec![Signal::builder("color-changed")
-                .param_types([u8::static_type(), u8::static_type(), u8::static_type()])
-                .build()]
-        })
-    }
-}
+impl ObjectImpl for ColorPicker {}
 impl WidgetImpl for ColorPicker {}
 impl BoxImpl for ColorPicker {}
-
-impl ColorPicker {
-    // bind rgb values with sliders
-    fn setup_binds(&self) {
-        let obj = self.obj();
-        obj.bind_property("red", &self.red_adj.get(), "value")
-            .bidirectional()
-            .sync_create()
-            .build();
-        obj.bind_property("green", &self.green_adj.get(), "value")
-            .bidirectional()
-            .sync_create()
-            .build();
-        obj.bind_property("blue", &self.blue_adj.get(), "value")
-            .bidirectional()
-            .sync_create()
-            .build();
-    }
-
-    fn setup_slider_change(&self) {
-        let obj = self.obj();
-        self.red_slider
-            .connect_change_value(clone!(@weak self as this =>
-                @default-return (false.into()), move |_, _, val| {
-                let obj = this.obj();
-                if this.red.get() != val.round() as u8 {
-                    obj.emit_by_name::<()>("color-changed", &[&(val.round() as u8), &this.green.get(), &this.blue.get()]);
-                }
-                // propogate signal to other handlers
-                false.into()
-            }));
-        self.green_slider
-            .connect_change_value(clone!(@weak self as this, @weak obj =>
-                @default-return (false.into()), move |_, _, val| {
-                if this.green.get() != val.round() as u8 {
-                    obj.emit_by_name::<()>("color-changed", &[&this.red.get(), &(val.round() as u8), &this.blue.get()]);
-                }
-                false.into()
-            }));
-        self.blue_slider
-            .connect_change_value(clone!(@weak self as this, @weak obj =>
-                @default-return (false.into()), move |_, _, val| {
-                if this.blue.get() != val.round() as u8 {
-                    obj.emit_by_name::<()>("color-changed", &[&this.red.get(), &this.green.get(), &(val.round() as u8)]);
-                }
-                false.into()
-            }));
-    }
-}
