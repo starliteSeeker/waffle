@@ -1,9 +1,62 @@
-use crate::data::palette::Palette;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::data::list_items::{BGMode, Bpp, TileSize};
+use crate::data::{
+    list_items::{BGMode, Bpp, TileSize},
+    palette::{Palette, RenameMePalette},
+};
+use crate::widgets::window::Window;
 use crate::TILE_W;
+
+pub struct RenameMeTileData(pub [u8; 64]);
+
+impl Default for RenameMeTileData {
+    fn default() -> Self {
+        RenameMeTileData([0; 64])
+    }
+}
+
+impl RenameMeTileData {
+    pub fn draw(&self, cr: &gtk::cairo::Context, state: &Window, palette_subset: Option<u8>) {
+        let pxl_w = TILE_W / 8.0;
+        // collect pixels with same color, then draw the pixels together
+        let mut rects = vec![Vec::new(); state.tile_bpp().to_val() as usize];
+
+        // (0, 0) as top left corner of tile
+        for (j, c) in self.0.into_iter().enumerate() {
+            // top left corner of pixel
+            let x_off = (j % 8) as f64 * pxl_w;
+            let y_off = (j / 8) as f64 * pxl_w;
+            // fail silently if c is out of range (>=4 for 2bpp, >=16 for 4bpp)
+            rects.get_mut(c as usize).map(|v| v.push((x_off, y_off)));
+        }
+
+        let palette_boxed = state.palette_data().unwrap();
+        let palette_data = palette_boxed.borrow::<RenameMePalette>();
+        let color_zero_idx = if let Some(s) = palette_subset {
+            state.palette_base() + s * state.tile_bpp().to_val()
+        } else {
+            state.palette_sel_idx() - state.palette_sel_idx() % state.tile_bpp().to_val()
+        };
+
+        for (i, v) in rects.into_iter().enumerate() {
+            for (x, y) in v {
+                cr.rectangle(x, y, pxl_w, pxl_w);
+            }
+            let (r, g, b) = palette_data.0[color_zero_idx as usize + i].to_cairo();
+            cr.set_source_rgb(r, g, b);
+            let _ = cr.fill();
+        }
+    }
+}
+
+pub struct RenameMeTileset(pub Vec<RenameMeTileData>);
+
+impl Default for RenameMeTileset {
+    fn default() -> Self {
+        RenameMeTileset(vec![RenameMeTileData::default()])
+    }
+}
 
 pub struct Tile {
     chr: [u8; 64],

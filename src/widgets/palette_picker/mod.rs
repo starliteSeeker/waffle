@@ -114,7 +114,7 @@ impl PalettePicker {
 
                 // dim sections of palette not used in current bg_mode
                 let x_offset = 0.0;
-                let y_offset = (bg_mode.palette_offset() / 16) as f64 * TILE_W;
+                let y_offset = (state.palette_base() / 16) as f64 * TILE_W;
                 let width = 16.0 * TILE_W;
                 let height = (tile_bpp.to_val() * 8 / 16) as f64 * TILE_W;
                 cr.rectangle(x_offset, y_offset, width, height);

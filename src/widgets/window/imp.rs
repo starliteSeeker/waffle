@@ -44,6 +44,11 @@ pub struct Window {
     #[property(get, set)]
     palette_sel_idx: Cell<u8>,
 
+    #[property(name = "tileset-data", get, construct_only, explicit_notify)]
+    tileset_data_2: RefCell<Option<BoxedAnyObject>>,
+    #[property(get, set)]
+    tileset_sel_idx: Cell<u32>,
+
     #[property(get, set, builder(Bpp::default()))]
     pub tile_bpp: Cell<Bpp>,
     #[property(get, set, builder(BGModeTwo::default()))]
@@ -95,16 +100,10 @@ impl ObjectImpl for Window {
         self.palette_picker.handle_action(&obj);
         self.palette_picker.render_widget(&obj);
 
-        let bg_mode = self.tilemap_editor.imp().bg_mode.clone();
+        self.tile_picker.handle_action(&obj);
+        self.tile_picker.render_widget(&obj);
 
-        self.tile_picker.setup_all(
-            self.obj().clone(),
-            self.palette_data.clone(),
-            self.tile_data.clone(),
-            self.palette_picker.clone(),
-            bg_mode.clone(),
-            self.tilemap_editor.clone(),
-        );
+        let bg_mode = self.tilemap_editor.imp().bg_mode.clone();
 
         // setup tilemap editor
         self.tilemap_editor.setup_all(

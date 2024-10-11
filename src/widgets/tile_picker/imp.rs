@@ -1,11 +1,10 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::OnceLock;
 
 use glib::subclass::{InitializingObject, Signal};
 use glib::Properties;
-use glib::{clone, closure_local};
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
@@ -37,6 +36,9 @@ pub struct TilePicker {
     #[property(get, set, nullable)]
     pub file: RefCell<Option<PathBuf>>,
 
+    #[property(name = "row-offset", get, set)]
+    row_offset_2: Cell<u32>,
+
     pub row_offset: Rc<RefCell<u32>>,
     pub tile_size: Rc<RefCell<TileSize>>,
 }
@@ -50,7 +52,6 @@ impl ObjectSubclass for TilePicker {
 
     fn class_init(klass: &mut Self::Class) {
         klass.bind_template();
-        // klass.bind_template_callbacks();
     }
 
     fn instance_init(obj: &InitializingObject<Self>) {
@@ -71,21 +72,6 @@ impl ObjectImpl for TilePicker {
         for i in TileSize::iter() {
             self.tile_size_items.append(&format!("{}", i));
         }
-
-        self.tile_size_select
-            .connect_selected_notify(clone!(@weak self as this => move |_| {
-                *this.tile_size.borrow_mut() = TileSize::iter().nth(this.tile_size_select.selected() as usize).expect("shouldn't happen");
-                this.obj().emit_by_name::<()>("tile-size-changed", &[]);
-            }));
-
-        // redraw self
-        self.obj().connect_closure(
-            "tile-size-changed",
-            false,
-            closure_local!(|this: Self::Type| {
-                this.imp().tile_drawing.queue_draw();
-            }),
-        );
     }
 
     fn signals() -> &'static [Signal] {

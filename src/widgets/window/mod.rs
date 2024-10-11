@@ -5,7 +5,12 @@ use glib::{BoxedAnyObject, ByteArray};
 use gtk::Application;
 use gtk::{gio, glib};
 
-use crate::data::{color::Color, palette::RenameMePalette};
+use crate::data::{
+    color::Color,
+    list_items::{Bpp, TileSize},
+    palette::RenameMePalette,
+    tiles::RenameMeTileset,
+};
 
 glib::wrapper! {
     pub struct Window(ObjectSubclass<imp::Window>)
@@ -25,7 +30,31 @@ impl Window {
                 "palette-data",
                 Some(BoxedAnyObject::new(RenameMePalette::default())),
             )
+            .property(
+                "tileset-data",
+                Some(BoxedAnyObject::new(RenameMeTileset::default())),
+            )
             .build()
+    }
+
+    pub fn palette_base(&self) -> u8 {
+        match self.tile_bpp() {
+            Bpp::Two => self.bg_mode().palette_offset(),
+            Bpp::Four => 0,
+        }
+    }
+
+    pub fn is_valid_tileset_idx(&self) -> bool {
+        let tile_len = self
+            .tileset_data()
+            .unwrap()
+            .borrow::<RenameMeTileset>()
+            .0
+            .len();
+        match self.tile_size() {
+            TileSize::Eight => (self.tileset_sel_idx() as usize) < tile_len,
+            TileSize::Sixteen => self.tileset_sel_idx() as usize + 16 + 1 < tile_len,
+        }
     }
 
     pub fn picker_color_inner(&self) -> Color {
