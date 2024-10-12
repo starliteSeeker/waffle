@@ -11,7 +11,7 @@ use std::fs::File;
 */
 
 // use gio::{ActionEntry, SimpleActionGroup};
-use glib::{clone, closure_local};
+use glib::clone;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::GestureClick;
@@ -57,6 +57,7 @@ impl PalettePicker {
         state.connect_palette_data_notify(clone!(@weak self as this => move |_| {
             this.imp().palette_drawing.queue_draw();
         }));
+
         state.connect_tile_bpp_notify(clone!(@weak self as this => move |_| {
             this.imp().palette_drawing.queue_draw();
         }));
@@ -77,10 +78,9 @@ impl PalettePicker {
         self.imp()
             .palette_drawing
             .set_draw_func(clone!(@weak state => move |_, cr, x, y| {
-                let RenameMePalette(palette_data): RenameMePalette = *state.palette_data().unwrap().borrow();
+                let RenameMePalette(palette_data) = *state.palette_data();
                 let sel_idx = state.palette_sel_idx();
                 let tile_bpp = state.tile_bpp();
-                let bg_mode = state.bg_mode();
 
                 // default color
                 cr.set_source_rgb(1.0, 0.0, 1.0);

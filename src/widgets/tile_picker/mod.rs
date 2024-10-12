@@ -8,7 +8,7 @@ use std::str::FromStr;
 
 use gio::{ActionEntry, SimpleActionGroup};
 */
-use glib::{clone, closure_local};
+use glib::clone;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::GestureClick;
@@ -17,7 +17,6 @@ use gtk::{gio, glib};
 use strum::IntoEnumIterator;
 
 use crate::data::list_items::TileSize;
-use crate::data::tiles::RenameMeTileset;
 use crate::utils::*;
 use crate::widgets::window::Window;
 use crate::TILE_W;
@@ -64,7 +63,7 @@ impl TilePicker {
         imp.tile_next
             .connect_clicked(clone!(@weak self as this, @weak state => move |_| {
                 let x = this.row_offset();
-                let max_tiles = state.tileset_data().unwrap().borrow::<RenameMeTileset>().0.len();
+                let max_tiles = state.tileset_data().0.len();
                 if x + 8 + 8 < ((max_tiles + 15) / 16) as u32 {
                     this.set_row_offset(x - 8);
                 }
@@ -77,7 +76,7 @@ impl TilePicker {
         }));
 
         state.connect_tileset_sel_idx_notify(clone!(@weak self as this => move |state| {
-            this.set_index_label(state.tileset_sel_idx() as u16, state.tileset_data().unwrap().borrow::<RenameMeTileset>().0.len() as u16 - 1);
+            this.set_index_label(state.tileset_sel_idx() as u16, state.tileset_data().0.len() as u16 - 1);
             this.imp().tile_drawing.queue_draw();
         }));
 
@@ -99,8 +98,7 @@ impl TilePicker {
 
         self.imp().tile_drawing.set_draw_func(
             clone!(@weak self as this, @weak state => move |_, cr, w, _| {
-                let tileset_boxed = state.tileset_data().unwrap();
-                let tiles = &tileset_boxed.borrow::<RenameMeTileset>().0;
+                let tiles = &state.tileset_data().0;
                 let row_offset = this.row_offset();
 
                 // default color

@@ -1,9 +1,10 @@
 mod imp;
 
+use glib::ByteArray;
 use glib::Object;
-use glib::{BoxedAnyObject, ByteArray};
 use gtk::Application;
 use gtk::{gio, glib};
+use gtk::{prelude::*, subclass::prelude::*};
 
 use crate::data::{
     color::Color,
@@ -26,35 +27,38 @@ impl Window {
         Object::builder()
             .property("application", app)
             .property("show-menubar", true)
-            .property(
-                "palette-data",
-                Some(BoxedAnyObject::new(RenameMePalette::default())),
-            )
-            .property(
-                "tileset-data",
-                Some(BoxedAnyObject::new(RenameMeTileset::default())),
-            )
             .build()
     }
 
-    pub fn palette_base(&self) -> u8 {
-        match self.tile_bpp() {
-            Bpp::Two => self.bg_mode().palette_offset(),
-            Bpp::Four => 0,
+    // custom get/set/notify for non-properties
+    pub fn palette_data(&self) -> std::cell::Ref<RenameMePalette> {
+        self.imp().palette_data_2.borrow()
+    }
+    pub fn modify_palette_data(&self, f: impl Fn(&mut RenameMePalette) -> bool) {
+        if f(&mut self.imp().palette_data_2.borrow_mut()) {
+            self.emit_by_name::<()>("palette-data-changed", &[]);
         }
     }
+    pub fn connect_palette_data_notify(&self, f: impl Fn(&Self) + 'static) {
+        self.connect_local("palette-data-changed", false, move |args| {
+            f(args[0].get().unwrap());
+            return None;
+        });
+    }
 
-    pub fn is_valid_tileset_idx(&self) -> bool {
-        let tile_len = self
-            .tileset_data()
-            .unwrap()
-            .borrow::<RenameMeTileset>()
-            .0
-            .len();
-        match self.tile_size() {
-            TileSize::Eight => (self.tileset_sel_idx() as usize) < tile_len,
-            TileSize::Sixteen => self.tileset_sel_idx() as usize + 16 + 1 < tile_len,
+    pub fn tileset_data(&self) -> std::cell::Ref<RenameMeTileset> {
+        self.imp().tileset_data_2.borrow()
+    }
+    pub fn modify_tileset_data(&self, f: impl Fn(&mut RenameMeTileset) -> bool) {
+        if f(&mut self.imp().tileset_data_2.borrow_mut()) {
+            self.emit_by_name::<()>("tileset-data-changed", &[]);
         }
+    }
+    pub fn connect_tileset_data_notify(&self, f: impl Fn(&Self) + 'static) {
+        self.connect_local("tileset-data-changed", false, move |args| {
+            f(args[0].get().unwrap());
+            return None;
+        });
     }
 
     pub fn picker_color_inner(&self) -> Color {
@@ -65,7 +69,6 @@ impl Window {
             .expect("picker_color size mismatch");
         Color::from_bytes(curr_color)
     }
-
     pub fn modify_picker_color(&self, f: impl Fn(Color) -> Color) {
         let curr_color = self.picker_color_inner();
         let new_color = f(curr_color);
@@ -74,10 +77,19 @@ impl Window {
         }
     }
 
-    pub fn modify_palette_data(&self, f: impl Fn(&mut RenameMePalette) -> bool) {
-        let palette_data = self.palette_data().unwrap();
-        if f(&mut palette_data.borrow_mut::<RenameMePalette>()) {
-            self.notify_palette_data();
+    // helpful functions
+    pub fn palette_base(&self) -> u8 {
+        match self.tile_bpp() {
+            Bpp::Two => self.bg_mode().palette_offset(),
+            Bpp::Four => 0,
+        }
+    }
+
+    pub fn is_valid_tileset_idx(&self) -> bool {
+        let tile_len = self.tileset_data().0.len();
+        match self.tile_size() {
+            TileSize::Eight => (self.tileset_sel_idx() as usize) < tile_len,
+            TileSize::Sixteen => self.tileset_sel_idx() as usize + 16 + 1 < tile_len,
         }
     }
 }

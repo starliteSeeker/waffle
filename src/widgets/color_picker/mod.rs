@@ -54,7 +54,7 @@ impl ColorPicker {
 
         state.connect_palette_sel_idx_notify(clone!(@weak self as this => move |state| {
             // load new color
-            let RenameMePalette(palette_data): RenameMePalette = *state.palette_data().unwrap().borrow();
+            let RenameMePalette(palette_data): RenameMePalette = *state.palette_data();
             let new_color = palette_data[state.palette_sel_idx() as usize];
             if new_color == state.picker_color_inner() {
                 return;

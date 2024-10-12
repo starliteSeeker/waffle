@@ -6,8 +6,8 @@ use gio::{ActionEntry, SimpleActionGroup};
 use glib::clone;
 use glib::subclass::InitializingObject;
 use glib::subclass::Signal;
+use glib::ByteArray;
 use glib::Properties;
-use glib::{BoxedAnyObject, ByteArray};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{gio, glib, CompositeTemplate};
@@ -15,8 +15,8 @@ use gtk::{gio, glib, CompositeTemplate};
 use crate::data::{
     color::Color,
     list_items::{BGModeTwo, Bpp, TileSize, Zoom},
-    palette::Palette,
-    tiles::Tileset,
+    palette::{Palette, RenameMePalette},
+    tiles::{RenameMeTileset, Tileset},
 };
 use crate::widgets::{
     color_picker::ColorPicker, palette_picker::PalettePicker, tile_picker::TilePicker,
@@ -39,13 +39,11 @@ pub struct Window {
     #[property(get, set)]
     picker_color: RefCell<Option<ByteArray>>,
 
-    #[property(name = "palette-data", get, construct_only, explicit_notify)]
-    palette_data_2: RefCell<Option<BoxedAnyObject>>,
+    pub(super) palette_data_2: RefCell<RenameMePalette>,
     #[property(get, set)]
     palette_sel_idx: Cell<u8>,
 
-    #[property(name = "tileset-data", get, construct_only, explicit_notify)]
-    tileset_data_2: RefCell<Option<BoxedAnyObject>>,
+    pub(super) tileset_data_2: RefCell<RenameMeTileset>,
     #[property(get, set)]
     tileset_sel_idx: Cell<u32>,
 
@@ -103,8 +101,6 @@ impl ObjectImpl for Window {
         self.tile_picker.handle_action(&obj);
         self.tile_picker.render_widget(&obj);
 
-        let bg_mode = self.tilemap_editor.imp().bg_mode.clone();
-
         // setup tilemap editor
         self.tilemap_editor.setup_all(
             self.palette_data.clone(),
@@ -130,9 +126,13 @@ impl ObjectImpl for Window {
     fn signals() -> &'static [Signal] {
         static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
         SIGNALS.get_or_init(|| {
-            vec![Signal::builder("set-color")
-                .param_types([u32::static_type(), u32::static_type(), u32::static_type()])
-                .build()]
+            vec![
+                Signal::builder("set-color")
+                    .param_types([u32::static_type(), u32::static_type(), u32::static_type()])
+                    .build(),
+                Signal::builder("palette-data-changed").build(),
+                Signal::builder("tileset-data-changed").build(),
+            ]
         })
     }
 }

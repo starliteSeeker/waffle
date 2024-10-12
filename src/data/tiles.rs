@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use crate::data::{
     list_items::{BGMode, Bpp, TileSize},
-    palette::{Palette, RenameMePalette},
+    palette::Palette,
 };
 use crate::widgets::window::Window;
 use crate::TILE_W;
@@ -31,8 +31,7 @@ impl RenameMeTileData {
             rects.get_mut(c as usize).map(|v| v.push((x_off, y_off)));
         }
 
-        let palette_boxed = state.palette_data().unwrap();
-        let palette_data = palette_boxed.borrow::<RenameMePalette>();
+        let palette_data = state.palette_data();
         let color_zero_idx = if let Some(s) = palette_subset {
             state.palette_base() + s * state.tile_bpp().to_val()
         } else {
