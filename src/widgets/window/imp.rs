@@ -14,8 +14,9 @@ use gtk::{gio, glib, CompositeTemplate};
 
 use crate::data::{
     color::Color,
-    list_items::{BGModeTwo, Bpp, TileSize, Zoom},
+    list_items::{BGModeTwo, Bpp, TileSize},
     palette::{Palette, RenameMePalette},
+    tilemap::RenameMeTilemap,
     tiles::{RenameMeTileset, Tileset},
 };
 use crate::widgets::{
@@ -47,14 +48,14 @@ pub struct Window {
     #[property(get, set)]
     tileset_sel_idx: Cell<u32>,
 
+    pub(super) tilemap_data: RefCell<RenameMeTilemap>,
+
     #[property(get, set, builder(Bpp::default()))]
     pub tile_bpp: Cell<Bpp>,
     #[property(get, set, builder(BGModeTwo::default()))]
     pub bg_mode: Cell<BGModeTwo>,
     #[property(get, set, builder(TileSize::default()))]
     pub tile_size: Cell<TileSize>,
-    #[property(get, set, builder(Zoom::default()))]
-    pub tilemap_zoom: Cell<Zoom>,
 
     pub palette_data: Rc<RefCell<Palette>>,
     pub tile_data: Rc<RefCell<Tileset>>,
@@ -101,6 +102,10 @@ impl ObjectImpl for Window {
         self.tile_picker.handle_action(&obj);
         self.tile_picker.render_widget(&obj);
 
+        self.tilemap_editor.handle_action(&obj);
+        self.tilemap_editor.render_widget(&obj);
+
+        /*
         // setup tilemap editor
         self.tilemap_editor.setup_all(
             self.palette_data.clone(),
@@ -110,6 +115,7 @@ impl ObjectImpl for Window {
             self.tile_picker.clone(),
             self.obj().clone(),
         );
+        */
 
         // debug stuff
         /* TODO remove when finishsed */
@@ -132,6 +138,7 @@ impl ObjectImpl for Window {
                     .build(),
                 Signal::builder("palette-data-changed").build(),
                 Signal::builder("tileset-data-changed").build(),
+                Signal::builder("tilemap-data-changed").build(),
             ]
         })
     }

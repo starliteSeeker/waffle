@@ -98,7 +98,7 @@ impl TilePicker {
 
         self.imp().tile_drawing.set_draw_func(
             clone!(@weak self as this, @weak state => move |_, cr, w, _| {
-                let tiles = &state.tileset_data().0;
+                let tiles = &state.tileset_data();
                 let row_offset = this.row_offset();
 
                 // default color
@@ -110,14 +110,14 @@ impl TilePicker {
                 // 16 8x8 tiles per row
                 for i in 0..256 {
                     let ti = (i + row_offset * 16) as usize;
-                    if ti >= tiles.len() {
+                    if ti >= tiles.0.len() {
                         break;
                     }
                     let x_offset = (i % 16) as f64 * tile_w;
                     let y_offset = (i / 16) as f64 * tile_w;
                     let _ = cr.save();
                     cr.translate(x_offset, y_offset);
-                    tiles[ti].draw(cr, &state, None);
+                    tiles.draw_tile(ti, cr, &state, None);
                     let _ = cr.restore();
                 }
 

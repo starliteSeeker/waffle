@@ -1,26 +1,21 @@
 mod imp;
 
-use std::cell::RefCell;
 use std::fs::File;
 use std::path::PathBuf;
-use std::rc::Rc;
 
 use strum::IntoEnumIterator;
 
 use gio::{ActionEntry, SimpleActionGroup};
 use glib::clone;
-use glib::closure_local;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::GestureDrag;
 use gtk::{gio, glib};
 
-use crate::data::list_items::{BGMode, BGModeTwo, Bpp, DrawMode, TileSize, Zoom};
-use crate::data::palette::Palette;
-use crate::data::tilemap::Tilemap;
-use crate::data::tiles::Tileset;
+use crate::data::list_items::{BGModeTwo, DrawMode, TileSize, Zoom};
 use crate::utils::*;
 use crate::widgets::window::Window;
+use crate::TILE_W;
 
 glib::wrapper! {
     pub struct TilemapEditor(ObjectSubclass<imp::TilemapEditor>)
@@ -30,100 +25,163 @@ glib::wrapper! {
 }
 
 impl TilemapEditor {
-    pub fn setup_all<P: WidgetExt, T: WidgetExt>(
-        &self,
-        palette_data: Rc<RefCell<Palette>>,
-        tile_data: Rc<RefCell<Tileset>>,
-        tile_size: Rc<RefCell<TileSize>>,
-        palette_obj: P,
-        tile_obj: T,
-        parent: Window,
-    ) {
-        self.setup_gesture();
-        self.setup_draw(palette_data, tile_data.clone(), tile_size);
-        self.setup_signal_connection(palette_obj, tile_obj);
-        self.setup_actions(parent);
+    pub fn handle_action(&self, state: &Window) {
+        let imp = self.imp();
+
+        // click/drag on editor
+        self.setup_gesture(state);
+
+        // tile setting toggle buttons
+        imp.flip_x_btn
+            .connect_active_notify(clone!(@weak imp => move |btn| {
+                imp.curr_tile.borrow_mut().set_x_flip(btn.is_active());
+            }));
+        imp.flip_y_btn
+            .connect_active_notify(clone!(@weak imp => move |btn| {
+                imp.curr_tile.borrow_mut().set_y_flip(btn.is_active());
+            }));
+        imp.priority_btn
+            .connect_active_notify(clone!(@weak imp => move |btn| {
+                imp.curr_tile.borrow_mut().set_priority(btn.is_active());
+            }));
+
+        // change current tile
+        state.connect_tileset_sel_idx_notify(clone!(@weak imp => move |state| {
+            if let Err(e) = imp.curr_tile.borrow_mut().set_tile_idx_checked(state.tileset_sel_idx() as u16) {
+                eprintln!("{e}");
+            };
+        }));
+
+        // tilemap view settings
+        imp.zoom_select
+            .connect_selected_notify(clone!(@weak self as this => move |_| {
+                let imp = this.imp();
+                let new_zoom = Zoom::iter().nth(imp.zoom_select.selected() as usize).expect("shouldn't happen");
+                this.set_tilemap_zoom(new_zoom);
+            }));
+        imp.mode_select
+            .connect_selected_notify(clone!(@weak state, @weak imp => move |_| {
+                state.set_bg_mode(BGModeTwo::iter().nth(imp.mode_select.selected() as usize).expect("shouldn't happen"));
+            }));
     }
 
-    fn setup_gesture(&self) {
+    pub fn render_widget(&self, state: &Window) {
+        self.connect_tilemap_zoom_notify(clone!(@weak self as this => move |_| {
+            let imp = this.imp();
+            let side_length = (TILE_W * 32.0 * this.tilemap_zoom().to_val()) as i32;
+            imp.tilemap_drawing.set_content_width(side_length);
+            imp.tilemap_drawing.set_content_height(side_length);
+
+            imp.tilemap_drawing.queue_draw();
+        }));
+
+        state.connect_palette_data_notify(clone!(@weak self as this => move |_| {
+            this.imp().tilemap_drawing.queue_draw();
+        }));
+
+        state.connect_tile_size_notify(clone!(@weak self as this => move |_| {
+            this.imp().tilemap_drawing.queue_draw();
+        }));
+
+        state.connect_bg_mode_notify(clone!(@weak self as this => move |_| {
+            this.imp().tilemap_drawing.queue_draw();
+        }));
+
+        state.connect_tilemap_data_notify(clone!(@weak self as this => move |_| {
+            this.imp().tilemap_drawing.queue_draw();
+        }));
+
+        self.imp().tilemap_drawing.set_draw_func(
+            clone!(@weak self as this, @weak state => move |_, cr, _, _| {
+                let _ = cr.save();
+                cr.set_antialias(gtk::cairo::Antialias::None);
+                match this.tilemap_zoom() {
+                    Zoom::Half => cr.scale(0.5, 0.5),
+                    Zoom::One => (),
+                    Zoom::Two => cr.scale(2.0, 2.0),
+                }
+                this.draw_tilemap(cr, &state);
+                let _ = cr.restore();
+            }),
+        );
+    }
+
+    fn setup_gesture(&self, state: &Window) {
         let drag_event = GestureDrag::new();
-        drag_event.connect_drag_begin(clone!(@weak self as this => move |_, x, y| {
+        drag_event.connect_drag_begin(clone!(@weak self as this, @weak state => move |_, x, y| {
             let imp = this.imp();
 
             // calculate tile index
             let Some(new_idx) = this.cursor_to_idx(x, y) else {return};
 
-            match imp.draw_mode() {
-                DrawMode::Pen => {
-                    if imp.map_data.borrow_mut().set_tile(new_idx, &*imp.curr_tile.borrow()) {
-                        this.emit_by_name::<()>("tilemap-changed", &[]);
-                    }
-                },
-                DrawMode::RectFill => {
-                    let (idx_x, idx_y) = (new_idx % 32, new_idx / 32);
-                    *imp.curr_drag.borrow_mut() = Some(((idx_x, idx_y), (idx_x, idx_y)));
-                    this.emit_by_name::<()>("tilemap-changed", &[]);
-                },
+            if imp.pen_draw_btn.is_active() {
+                imp.curr_drag.replace(DrawMode::Pen);
+                state.put_tile(new_idx as usize, &imp.curr_tile.borrow());
+            } else if imp.rect_fill_btn.is_active() {
+                let idx = (new_idx % 32, new_idx / 32);
+                imp.curr_drag.replace(DrawMode::RectFill {
+                    start: idx,
+                    end: idx,
+                });
+            } else {
+                eprintln!("draw mode not selected");
             }
         }));
-        drag_event.connect_drag_update(clone!(@weak self as this => move |drag, dx, dy| {
-            let imp = this.imp();
+        drag_event.connect_drag_update(
+            clone!(@weak self as this, @weak state => move |drag, dx, dy| {
+                let imp = this.imp();
 
-            // calculate tile index
-            let Some((x, y)) = drag.start_point() else {return};
-            let Some(new_idx) = this.cursor_to_idx(x + dx, y + dy) else {return};
+                // calculate tile index
+                let Some((x, y)) = drag.start_point() else {return};
+                let Some(new_idx) = this.cursor_to_idx(x + dx, y + dy) else {return};
 
-            let (idx_x, idx_y) = (new_idx % 32, new_idx / 32);
+                let new_idx_2d = (new_idx % 32, new_idx / 32);
 
-            let mut curr_drag = imp.curr_drag.borrow_mut();
-
-            match imp.draw_mode() {
-                DrawMode::Pen => {
-                    if imp.map_data.borrow_mut().set_tile(new_idx, &*imp.curr_tile.borrow()) {
-                        this.emit_by_name::<()>("tilemap-changed", &[]);
-                    }
-                },
-                DrawMode::RectFill => {
-                    if curr_drag.is_some_and(|(_, end)| end != (idx_x, idx_y)) {
-                        *curr_drag = curr_drag.map(|(start, _)| (start, (idx_x, idx_y)));
-                        this.emit_by_name::<()>("tilemap-changed", &[]);
-                    }
-                },
-            }
-        }));
-        drag_event.connect_drag_end(clone!(@weak self as this => move |_, _, _| {
-            let imp = this.imp();
-            match imp.draw_mode() {
-                DrawMode::RectFill => {
-                    // sort rectangle fill boundaries
-                    let ((x_min, x_max), (y_min, y_max)) = if let Some(((x1, y1), (x2, y2))) = *imp.curr_drag.borrow() {
-                        (
-                            (x1.min(x2) as usize, x1.max(x2) as usize),
-                            (y1.min(y2) as usize, y1.max(y2) as usize),
-                        )
-                    } else {
-                        return;
-                    };
-                    // update tilemap
-                    let mut map_data = imp.map_data.borrow_mut();
-                    for i in y_min..=y_max {
-                        for j in x_min..=x_max {
-                            map_data.set_tile((i * 32 + j) as u32, &*imp.curr_tile.borrow());
+                match &mut *imp.curr_drag.borrow_mut() {
+                    DrawMode::Pen => {
+                        state.put_tile(new_idx, &imp.curr_tile.borrow());
+                    },
+                    DrawMode::RectFill { start: _, end } => {
+                        if *end != new_idx_2d {
+                            *end = new_idx_2d;
+                            imp.tilemap_drawing.queue_draw();
                         }
                     }
-                    // reset selection
-                    *imp.curr_drag.borrow_mut() = None;
-                    this.emit_by_name::<()>("tilemap-changed", &[]);
+                    _ => {
+                        eprintln!("draw mode not selected");
+                    }
+                };
+            }),
+        );
+        drag_event.connect_drag_end(clone!(@weak self as this, @weak state => move |_, _, _| {
+            let imp = this.imp();
+            match *imp.curr_drag.borrow() {
+                DrawMode::RectFill {start, end} => {
+                    let new_tile = this.imp().curr_tile.borrow();
+                    state.modify_tilemap_data(move |tilemap| {
+                        let ((x_min, x_max), (y_min, y_max)) = (
+                            (start.0.min(end.0), start.0.max(end.0)),
+                            (start.1.min(end.1), start.1.max(end.1)),
+                        );
+                        for i in y_min..=y_max {
+                            for j in x_min..=x_max {
+                                tilemap.0[i * 32 + j] = *new_tile;
+                            }
+                        }
+                        return true;
+                    });
                 },
                 _ => {},
             }
+
+            imp.curr_drag.replace(DrawMode::None);
         }));
         self.imp().tilemap_drawing.add_controller(drag_event);
     }
 
-    fn cursor_to_idx(&self, x: f64, y: f64) -> Option<u32> {
+    fn cursor_to_idx(&self, x: f64, y: f64) -> Option<usize> {
         let imp = self.imp();
-        let tile_w = crate::TILE_W * imp.zoom_level.borrow().to_val();
+        let tile_w = TILE_W * self.tilemap_zoom().to_val();
 
         let scroll = &imp.tilemap_scroll;
         if x < scroll.hadjustment().value()
@@ -141,101 +199,64 @@ impl TilemapEditor {
             return None;
         }
 
-        let new_idx = tile_y.floor() as u32 * 32 + tile_x.floor() as u32;
+        let new_idx = tile_y.floor() as usize * 32 + tile_x.floor() as usize;
         Some(new_idx)
     }
 
-    fn setup_draw(
-        &self,
-        palette_data: Rc<RefCell<Palette>>,
-        tile_data: Rc<RefCell<Tileset>>,
-        tile_size: Rc<RefCell<TileSize>>,
-    ) {
-        let imp = self.imp();
-        imp.tilemap_drawing.set_draw_func(
-            clone!(@weak imp, @weak palette_data, @weak tile_data, @weak tile_size => move |_, cr, _, _| {
-                let _ = cr.save();
-                cr.set_antialias(gtk::cairo::Antialias::None);
-                match *imp.zoom_level.borrow() {
-                    Zoom::Half => cr.scale(0.5, 0.5),
-                    Zoom::One => (),
-                    Zoom::Two => cr.scale(2.0, 2.0),
+    fn draw_tilemap(&self, cr: &gtk::cairo::Context, state: &Window) {
+        let tileset = state.tileset_data();
+        let curr_drag = self.imp().curr_drag.borrow();
+
+        // fallback color
+        cr.set_source_rgb(0.4, 0.4, 0.4);
+        let _ = cr.paint();
+
+        let curr_tile = self.imp().curr_tile.borrow();
+        for (i, tile) in state.tilemap_data().0.iter().enumerate() {
+            let ix = i % 32;
+            let iy = i / 32;
+            let x_offset = ix as f64 * TILE_W;
+            let y_offset = iy as f64 * TILE_W;
+
+            // decide which tile to draw
+            let tile = if curr_drag.idx_in_range(ix, iy) {
+                &curr_tile
+            } else {
+                tile
+            };
+
+            let _ = cr.save();
+            cr.translate(x_offset, y_offset);
+            if tile.x_flip() {
+                cr.translate(TILE_W, 0.0);
+                cr.scale(-1.0, 1.0);
+            }
+            if tile.y_flip() {
+                cr.translate(0.0, TILE_W);
+                cr.scale(1.0, -1.0);
+            }
+
+            let idx = tile.tile_idx().into();
+            match state.tile_size() {
+                TileSize::Eight => {
+                    tileset.draw_tile(idx, cr, state, Some(tile.palette()));
                 }
-                imp.map_data.borrow().draw(cr, palette_data, tile_data, imp.bg_mode.clone(), tile_size, *imp.curr_drag.borrow(), *imp.curr_tile.borrow());
-                let _ = cr.restore();
-            }),
-        );
+                TileSize::Sixteen => {
+                    cr.scale(0.5, 0.5);
+                    tileset.draw_tile(idx, cr, state, Some(tile.palette()));
+                    cr.translate(TILE_W, 0.0);
+                    tileset.draw_tile(idx + 1, cr, state, Some(tile.palette()));
+                    cr.translate(-TILE_W, TILE_W);
+                    tileset.draw_tile(idx + 16, cr, state, Some(tile.palette()));
+                    cr.translate(TILE_W, 0.0);
+                    tileset.draw_tile(idx + 17, cr, state, Some(tile.palette()));
+                }
+            }
+            let _ = cr.restore();
+        }
     }
 
-    fn setup_signal_connection<P: WidgetExt, T: WidgetExt>(&self, palette_obj: P, tile_obj: T) {
-        palette_obj.connect_closure(
-            "palette-changed",
-            false,
-            closure_local!(@weak-allow-none self as this => move |_: P| {
-                let Some(this) = this else {return};
-                this.imp().tilemap_drawing.queue_draw();
-            }),
-        );
-        palette_obj.connect_closure(
-            "color-idx-changed",
-            false,
-            closure_local!(@weak-allow-none self as this => move |_: P, new_idx: u8, _: u8, _: u8, _: u8| {
-                let Some(this) = this else {return};
-                let bg_mode = this.imp().bg_mode.borrow();
-                let palette_idx = (new_idx / bg_mode.bpp().to_val()) % 8;
-                this.imp().curr_tile.borrow_mut().set_palette(palette_idx.min(7));
-            }),
-        );
-
-        tile_obj.connect_closure(
-            "tile-idx-changed",
-            false,
-            closure_local!(@weak-allow-none self as this => move |_: T, new_idx: u32| {
-                let Some(this) = this else {return};
-                this.imp().curr_tile.borrow_mut().set_tile_idx(new_idx as u16);
-            }),
-        );
-
-        tile_obj.connect_closure(
-            "tile-changed",
-            false,
-            closure_local!(@weak-allow-none self as this => move |_: T| {
-                let Some(this) = this else {return};
-                this.imp().tilemap_drawing.queue_draw();
-            }),
-        );
-        tile_obj.connect_closure(
-            "tile-size-changed",
-            false,
-            closure_local!(@weak-allow-none self as this => move |_: T| {
-                let Some(this) = this else {return};
-                this.imp().tilemap_drawing.queue_draw();
-            }),
-        );
-        tile_obj.connect_closure(
-            "bpp-changed",
-            false,
-            closure_local!(@weak-allow-none self as this => move |_: T, bpp: u8| {
-                let Some(this) = this else {return};
-                let bpp = Bpp::iter().nth(bpp as usize).expect("shouldn't happen");
-                match bpp {
-                    Bpp::Two => {
-                        this.imp().mode_select.set_sensitive(true);
-                        let bpp2 = BGModeTwo::iter().nth(this.imp().mode_select.selected() as usize).expect("shouldn't happen");
-                        *this.imp().bg_mode.borrow_mut() = BGMode::Two(bpp2);
-                        this.emit_by_name::<()>("bg-mode-changed", &[]);
-                    },
-                    Bpp::Four => {
-                        // disable dropdown
-                        this.imp().mode_select.set_sensitive(false);
-                        *this.imp().bg_mode.borrow_mut() = BGMode::Four;
-                        this.emit_by_name::<()>("bg-mode-changed", &[]);
-                    },
-                }
-            }),
-        );
-    }
-
+    /*
     fn setup_actions(&self, parent: Window) {
         let action_open = ActionEntry::builder("open")
             .activate(clone!(@weak self as this, @weak parent => move |_, _, _| {
@@ -295,4 +316,5 @@ impl TilemapEditor {
 
         parent.insert_action_group("tilemap", Some(&actions));
     }
+    */
 }

@@ -9,6 +9,14 @@ use crate::data::list_items::{BGMode, TileSize};
 use crate::data::palette::Palette;
 use crate::data::tiles::Tileset;
 
+pub struct RenameMeTilemap(pub [Tile; 1024]);
+
+impl Default for RenameMeTilemap {
+    fn default() -> Self {
+        RenameMeTilemap([Tile::default(); 1024])
+    }
+}
+
 #[bitfield]
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
 pub struct Tile {

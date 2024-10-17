@@ -10,6 +10,7 @@ use crate::data::{
     color::Color,
     list_items::{Bpp, TileSize},
     palette::RenameMePalette,
+    tilemap::{RenameMeTilemap, Tile},
     tiles::RenameMeTileset,
 };
 
@@ -58,6 +59,34 @@ impl Window {
         self.connect_local("tileset-data-changed", false, move |args| {
             f(args[0].get().unwrap());
             return None;
+        });
+    }
+
+    pub fn tilemap_data(&self) -> std::cell::Ref<RenameMeTilemap> {
+        self.imp().tilemap_data.borrow()
+    }
+    pub fn modify_tilemap_data(&self, f: impl Fn(&mut RenameMeTilemap) -> bool) {
+        if f(&mut self.imp().tilemap_data.borrow_mut()) {
+            self.emit_by_name::<()>("tilemap-data-changed", &[]);
+        }
+    }
+    pub fn connect_tilemap_data_notify(&self, f: impl Fn(&Self) + 'static) {
+        self.connect_local("tilemap-data-changed", false, move |args| {
+            f(args[0].get().unwrap());
+            return None;
+        });
+    }
+    pub fn put_tile(&self, idx: usize, tile: &Tile) {
+        self.modify_tilemap_data(|RenameMeTilemap(map)| {
+            let Some(old_tile) = map.get_mut(idx) else {
+                return false;
+            };
+            if *old_tile != *tile {
+                *old_tile = *tile;
+                return true;
+            } else {
+                return false;
+            }
         });
     }
 

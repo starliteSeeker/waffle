@@ -158,9 +158,28 @@ impl BGMode {
     }
 }
 
-#[derive(Default, EnumString)]
+#[derive(Debug, Default, Clone, Copy)]
 pub enum DrawMode {
     #[default]
+    None,
     Pen,
-    RectFill,
+    RectFill {
+        start: (usize, usize),
+        end: (usize, usize),
+    },
+}
+
+impl DrawMode {
+    pub fn idx_in_range(&self, ix: usize, iy: usize) -> bool {
+        match self {
+            DrawMode::RectFill { start, end } => {
+                let ((x_min, x_max), (y_min, y_max)) = (
+                    (start.0.min(end.0), start.0.max(end.0)),
+                    (start.1.min(end.1), start.1.max(end.1)),
+                );
+                ix >= x_min && ix <= x_max && iy >= y_min && iy <= y_max
+            }
+            _ => false,
+        }
+    }
 }

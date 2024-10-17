@@ -17,7 +17,7 @@ impl Default for RenameMeTileData {
 }
 
 impl RenameMeTileData {
-    pub fn draw(&self, cr: &gtk::cairo::Context, state: &Window, palette_subset: Option<u8>) {
+    fn draw(&self, cr: &gtk::cairo::Context, state: &Window, palette_subset: Option<u8>) {
         let pxl_w = TILE_W / 8.0;
         // collect pixels with same color, then draw the pixels together
         let mut rects = vec![Vec::new(); state.tile_bpp().to_val() as usize];
@@ -54,6 +54,34 @@ pub struct RenameMeTileset(pub Vec<RenameMeTileData>);
 impl Default for RenameMeTileset {
     fn default() -> Self {
         RenameMeTileset(vec![RenameMeTileData::default()])
+    }
+}
+
+impl RenameMeTileset {
+    pub fn draw_tile(
+        &self,
+        idx: usize,
+        cr: &gtk::cairo::Context,
+        state: &Window,
+        palette_subset: Option<u8>,
+    ) {
+        if let Some(tile) = self.0.get(idx) {
+            tile.draw(cr, state, palette_subset);
+        } else {
+            // pink tile with dot at the center
+            cr.rectangle(0.0, 0.0, TILE_W, TILE_W);
+            cr.set_source_rgb(1.0, 0.8, 0.8);
+            let _ = cr.fill();
+            cr.arc(
+                TILE_W / 2.0,
+                TILE_W / 2.0,
+                TILE_W / 6.0,
+                0.0,
+                2.0 * std::f64::consts::PI,
+            );
+            cr.set_source_rgb(1.0, 0.7, 0.7);
+            let _ = cr.fill();
+        }
     }
 }
 
