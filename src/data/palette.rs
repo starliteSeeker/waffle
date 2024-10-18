@@ -1,9 +1,10 @@
+use std::fs::File;
+use std::io::Write;
 use std::mem::{self, MaybeUninit};
 
 use itertools::Itertools;
 
 use super::color::Color;
-use crate::data::list_items::BGMode;
 
 pub struct RenameMePalette(pub [Color; 256]);
 
@@ -48,6 +49,76 @@ impl Default for RenameMePalette {
             }
             unsafe { mem::transmute::<_, [Color; 256]>(data) }
         })
+    }
+}
+
+impl RenameMePalette {
+    pub fn from_file_bgr555(path: &std::path::PathBuf) -> std::io::Result<Self> {
+        let mut content = std::fs::read(&path)?;
+        let len = content.len();
+        if len < 512 {
+            eprintln!("file size less than 512B, pad with 0");
+        } else if len > 512 {
+            eprintln!("file size greater than 512B, trim extra bytes");
+        }
+        content.resize(512, 0);
+
+        // unsafe initializing array
+        // https://doc.rust-lang.org/core/mem/union.MaybeUninit.html#initializing-an-array-element-by-element
+        Ok(RenameMePalette({
+            let mut data: [MaybeUninit<Color>; 256] =
+                unsafe { MaybeUninit::uninit().assume_init() };
+
+            for (i, (lo, hi)) in content.into_iter().tuples().enumerate() {
+                data[i].write(Color::from_bytes([lo, hi]));
+            }
+
+            unsafe { mem::transmute::<_, [Color; 256]>(data) }
+        }))
+    }
+
+    pub fn write_file_bgr555(&self, mut file: &File) -> std::io::Result<()> {
+        for c in &self.0 {
+            file.write_all(&c.into_bytes())?;
+        }
+        Ok(())
+    }
+
+    pub fn from_file_rgb24(path: &std::path::PathBuf) -> std::io::Result<Self> {
+        let content = std::fs::read(&path)?;
+        let len = content.len();
+        if len != 3 * 256 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "file must be 768 bytes",
+            ));
+        }
+
+        // unsafe initializing array
+        // https://doc.rust-lang.org/core/mem/union.MaybeUninit.html#initializing-an-array-element-by-element
+        Ok(RenameMePalette({
+            let mut data: [MaybeUninit<Color>; 256] =
+                unsafe { MaybeUninit::uninit().assume_init() };
+
+            for (i, (r, g, b)) in content.into_iter().tuples().enumerate() {
+                let r = r >> 3;
+                let g = g >> 3;
+                let b = b >> 3;
+                data[i].write(Color::new().with_red(r).with_green(g).with_blue(b));
+            }
+
+            unsafe { mem::transmute::<_, [Color; 256]>(data) }
+        }))
+    }
+
+    pub fn write_file_rgb24(&self, mut file: &File) -> std::io::Result<()> {
+        for c in &self.0 {
+            let r = c.red() << 3 | c.red() >> 2;
+            let g = c.green() << 3 | c.green() >> 2;
+            let b = c.blue() << 3 | c.blue() >> 2;
+            let _ = file.write_all(&[r, g, b])?;
+        }
+        Ok(())
     }
 }
 
@@ -178,7 +249,7 @@ impl Palette {
         return true;
     }
 
-    pub fn get_relative(&self, color_idx: u8, bg_mode: &BGMode) -> Color {
+    pub fn get_relative(&self, color_idx: u8, bg_mode: &super::list_items::BGMode) -> Color {
         let i = self.sel_idx - (self.sel_idx % bg_mode.bpp().to_val()) + color_idx;
         self.pal[i as usize]
     }

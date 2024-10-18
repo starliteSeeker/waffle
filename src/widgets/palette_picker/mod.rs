@@ -1,26 +1,18 @@
 mod imp;
 
-/*
-use std::cell::RefCell;
-use std::io::Write;
-use std::path::PathBuf;
-use std::rc::Rc;
 use std::str::FromStr;
 
 use std::fs::File;
-*/
+use std::path::PathBuf;
 
-// use gio::{ActionEntry, SimpleActionGroup};
+use gio::{ActionEntry, SimpleActionGroup};
 use glib::clone;
-use gtk::prelude::*;
-use gtk::subclass::prelude::*;
 use gtk::GestureClick;
 use gtk::{gio, glib};
+use gtk::{prelude::*, subclass::prelude::*};
 
-// use crate::data::file_format::PaletteFile;
-use crate::data::list_items::Bpp;
-use crate::data::palette::RenameMePalette;
-// use crate::utils::*;
+use crate::data::{file_format::PaletteFile, list_items::Bpp, palette::RenameMePalette};
+use crate::utils::*;
 use crate::widgets::window::Window;
 use crate::TILE_W;
 
@@ -46,6 +38,9 @@ impl PalettePicker {
             }),
         );
         self.imp().palette_scroll.add_controller(gesture);
+
+        // open/save files
+        self.file_actions(state);
     }
 
     pub fn render_widget(&self, state: &Window) {
@@ -151,5 +146,129 @@ impl PalettePicker {
         self.imp()
             .color_idx_label
             .set_label(&format!("${:02X} / $FF", idx));
+    }
+
+    fn file_actions(&self, state: &Window) {
+        let action_open = ActionEntry::builder("open")
+            .parameter_type(Some(&String::static_variant_type()))
+            .activate(
+                clone!(@weak self as this, @weak state => move |_, _, parameter| {
+                    // parse file format parameter
+                    let Some(file_format) = parameter else {return};
+                    let file_format = file_format.get::<String>().expect("parameter should have type String");
+                    let file_format = PaletteFile::from_str(&file_format).expect("invalid file format");
+                    file_open_dialog(
+                        state.clone(),
+                        move |path| {
+                            let file_result = match file_format {
+                                PaletteFile::BGR555 => RenameMePalette::from_file_bgr555(&path),
+                                PaletteFile::RGB24 => RenameMePalette::from_file_rgb24(&path),
+                            };
+                            match file_result {
+                                Err(e) => {
+                                    eprintln!("Error: {}", e);
+                                }
+                                Ok(p) => {
+                                    println!("load palette: {path:?}");
+                                    state.set_palette_data(p);
+                                    // only store file name (and allow reloading)
+                                    // if the type is BGR555
+                                    if file_format == PaletteFile::default() {
+                                        state.set_palette_file(Some(path));
+                                    } else {
+                                        state.set_palette_file(None::<PathBuf>);
+                                    }
+                                }
+                            };
+                        },
+                    );
+                })
+            )
+            .build();
+
+        let action_reload = ActionEntry::builder("reload")
+            .activate(clone!(@weak self as this, @weak state => move |_, _, _| {
+                let Some(file) = state.palette_file() else {
+                    eprintln!("No palette file currently open");
+                    return;
+                };
+
+                match RenameMePalette::from_file_bgr555(&file) {
+                    Err(e) => {
+                        eprintln!("Error: {}", e);
+                    }
+                    Ok(p) => {
+                        println!("reload palette: {file:?}");
+                        state.set_palette_data(p);
+                    }
+                };
+            }))
+            .build();
+
+        let action_save = ActionEntry::builder("save")
+            .activate(clone!(@weak self as this, @weak state => move |_, _, _| {
+                let Some(filepath) = state.palette_file() else {return};
+                match File::create(filepath.clone()) {
+                    Ok(f) => {
+                        let _ = state.palette_data().write_file_bgr555(&f);
+                        println!("save palette: {filepath:?}");
+                    },
+                    Err(e) => eprintln!("Error saving file: {e}"),
+                }
+            }))
+            .build();
+
+        let action_save_as = ActionEntry::builder("saveas")
+            .parameter_type(Some(&String::static_variant_type()))
+            .activate(
+                clone!(@weak self as this, @weak state => move |_, _, parameter| {
+                    // parse file format parameter
+                    let Some(file_format) = parameter else {return};
+                    let file_format = file_format.get::<String>().expect("parameter should have type String");
+                    let file_format = PaletteFile::from_str(&file_format).expect("invalid file format");
+
+                    file_save_dialog(state.clone(), move |_, filepath| {
+                        match File::create(filepath.clone()) {
+                            Ok(f) => {
+                                match file_format {
+                                    PaletteFile::BGR555 => {
+                                        let _ = state.palette_data().write_file_bgr555(&f);
+                                    },
+                                    PaletteFile::RGB24 => {
+                                        let _ = state.palette_data().write_file_rgb24(&f);
+                                    },
+                                }
+                                println!("save palette: {filepath:?}");
+
+                                if file_format == PaletteFile::default() {
+                                    state.set_palette_file(Some(filepath));
+                                }
+                            },
+                            Err(e) => eprintln!("Error saving file: {e}"),
+                        }
+                    });
+                }),
+            )
+            .build();
+
+        let actions = SimpleActionGroup::new();
+        actions.add_action_entries([action_open, action_reload, action_save, action_save_as]);
+
+        // enable/disable actions
+        let reload = actions.lookup_action("reload").unwrap();
+        state
+            .bind_property("palette_file", &reload, "enabled")
+            .transform_to(|_, file: Option<PathBuf>| Some(file.is_some()))
+            .sync_create()
+            .build();
+
+        let save = actions.lookup_action("save").unwrap();
+        state
+            .bind_property("palette_file", &save, "enabled")
+            .transform_to(|_, file: Option<PathBuf>| Some(file.is_some()))
+            .sync_create()
+            .build();
+
+        state.insert_action_group("palette", Some(&actions));
     }
 }

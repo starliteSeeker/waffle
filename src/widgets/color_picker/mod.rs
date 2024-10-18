@@ -62,6 +62,16 @@ impl ColorPicker {
             state.modify_picker_color(|_| new_color);
         }));
 
+        state.connect_palette_data_notify(clone!(@weak self as this => move |state| {
+            // load new color
+            let RenameMePalette(palette_data): RenameMePalette = *state.palette_data();
+            let new_color = palette_data[state.palette_sel_idx() as usize];
+            if new_color == state.picker_color_inner() {
+                return;
+            }
+            state.modify_picker_color(|_| new_color);
+        }));
+
         self.imp()
             .color_square
             .set_draw_func(clone!(@weak state => move |_, cr, _, _| {

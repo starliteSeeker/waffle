@@ -1,4 +1,5 @@
 use std::cell::{Cell, RefCell};
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::OnceLock;
 
@@ -43,6 +44,8 @@ pub struct Window {
     pub(super) palette_data_2: RefCell<RenameMePalette>,
     #[property(get, set)]
     palette_sel_idx: Cell<u8>,
+    #[property(get, set, nullable)]
+    palette_file: RefCell<Option<PathBuf>>,
 
     pub(super) tileset_data_2: RefCell<RenameMeTileset>,
     #[property(get, set)]

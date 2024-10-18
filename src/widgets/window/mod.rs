@@ -35,6 +35,10 @@ impl Window {
     pub fn palette_data(&self) -> std::cell::Ref<RenameMePalette> {
         self.imp().palette_data_2.borrow()
     }
+    pub fn set_palette_data(&self, pal: RenameMePalette) {
+        *self.imp().palette_data_2.borrow_mut() = pal;
+        self.emit_by_name::<()>("palette-data-changed", &[]);
+    }
     pub fn modify_palette_data(&self, f: impl Fn(&mut RenameMePalette) -> bool) {
         if f(&mut self.imp().palette_data_2.borrow_mut()) {
             self.emit_by_name::<()>("palette-data-changed", &[]);
