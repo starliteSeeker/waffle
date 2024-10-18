@@ -73,6 +73,10 @@ impl Window {
     pub fn tilemap_data(&self) -> std::cell::Ref<RenameMeTilemap> {
         self.imp().tilemap_data.borrow()
     }
+    pub fn set_tilemap_data(&self, tilemap: RenameMeTilemap) {
+        *self.imp().tilemap_data.borrow_mut() = tilemap;
+        self.emit_by_name::<()>("tilemap-data-changed", &[]);
+    }
     pub fn modify_tilemap_data(&self, f: impl Fn(&mut RenameMeTilemap) -> bool) {
         if f(&mut self.imp().tilemap_data.borrow_mut()) {
             self.emit_by_name::<()>("tilemap-data-changed", &[]);

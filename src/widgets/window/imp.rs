@@ -58,6 +58,8 @@ pub struct Window {
 
     // tilemap editor properties
     pub(super) tilemap_data: RefCell<RenameMeTilemap>,
+    #[property(get, set, nullable)]
+    tilemap_file: RefCell<Option<PathBuf>>,
 
     #[property(get, set, builder(Bpp::default()))]
     pub tile_bpp: Cell<Bpp>,
@@ -113,18 +115,6 @@ impl ObjectImpl for Window {
 
         self.tilemap_editor.handle_action(&obj);
         self.tilemap_editor.render_widget(&obj);
-
-        /*
-        // setup tilemap editor
-        self.tilemap_editor.setup_all(
-            self.palette_data.clone(),
-            self.tile_data.clone(),
-            self.tile_picker.imp().tile_size.clone(),
-            self.palette_picker.clone(),
-            self.tile_picker.clone(),
-            self.obj().clone(),
-        );
-        */
 
         // debug stuff
         /* TODO remove when finishsed */

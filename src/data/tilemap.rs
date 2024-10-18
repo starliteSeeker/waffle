@@ -9,14 +9,6 @@ use crate::data::list_items::{BGMode, TileSize};
 use crate::data::palette::Palette;
 use crate::data::tiles::Tileset;
 
-pub struct RenameMeTilemap(pub [Tile; 1024]);
-
-impl Default for RenameMeTilemap {
-    fn default() -> Self {
-        RenameMeTilemap([Tile::default(); 1024])
-    }
-}
-
 #[bitfield]
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
 pub struct Tile {
@@ -25,6 +17,50 @@ pub struct Tile {
     pub priority: bool,
     pub x_flip: bool,
     pub y_flip: bool,
+}
+
+pub struct RenameMeTilemap(pub [Tile; 1024]);
+
+impl Default for RenameMeTilemap {
+    fn default() -> Self {
+        RenameMeTilemap([Tile::default(); 1024])
+    }
+}
+
+impl RenameMeTilemap {
+    pub fn from_file(path: &std::path::PathBuf) -> std::io::Result<Self> {
+        let content = std::fs::read(&path)?;
+        let len = content.len();
+        // check alignment
+        if len % 2 != 0 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("file size is {} but should be a multiple of 2", len),
+            ));
+        }
+        // check file size
+        if len > 32 * 32 * 2 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "file must not exceed 2048 bytes",
+            ));
+        }
+
+        Ok(RenameMeTilemap({
+            let mut v = [Tile::default(); 1024];
+            for i in (0..len).step_by(2) {
+                v[i / 2] = Tile::from_bytes([content[i], content[i + 1]]);
+            }
+            v
+        }))
+    }
+
+    pub fn write_to_file(&self, mut f: &File) -> std::io::Result<()> {
+        for c in self.0 {
+            f.write_all(&c.into_bytes())?;
+        }
+        Ok(())
+    }
 }
 
 pub struct Tilemap {

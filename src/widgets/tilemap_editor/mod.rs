@@ -12,7 +12,10 @@ use gtk::subclass::prelude::*;
 use gtk::GestureDrag;
 use gtk::{gio, glib};
 
-use crate::data::list_items::{BGModeTwo, DrawMode, TileSize, Zoom};
+use crate::data::{
+    list_items::{BGModeTwo, DrawMode, TileSize, Zoom},
+    tilemap::RenameMeTilemap,
+};
 use crate::utils::*;
 use crate::widgets::window::Window;
 use crate::TILE_W;
@@ -63,6 +66,8 @@ impl TilemapEditor {
             .connect_selected_notify(clone!(@weak state, @weak imp => move |_| {
                 state.set_bg_mode(BGModeTwo::iter().nth(imp.mode_select.selected() as usize).expect("shouldn't happen"));
             }));
+
+        self.file_actions(state);
     }
 
     pub fn render_widget(&self, state: &Window) {
@@ -256,20 +261,18 @@ impl TilemapEditor {
         }
     }
 
-    /*
-    fn setup_actions(&self, parent: Window) {
+    fn file_actions(&self, state: &Window) {
         let action_open = ActionEntry::builder("open")
-            .activate(clone!(@weak self as this, @weak parent => move |_, _, _| {
-                file_open_dialog(parent, move |path| {
-                    match Tilemap::from_path(&path) {
+            .activate(clone!(@weak self as this, @weak state => move |_, _, _| {
+                file_open_dialog(state.clone(), move |path| {
+                    match RenameMeTilemap::from_file(&path) {
                         Err(e) => {
                             eprintln!("Error: {}", e);
                         }
                         Ok(t) => {
                             println!("load tilemap: {path:?}");
-                            *this.imp().map_data.borrow_mut() = t;
-                            this.set_file(Some(path));
-                            this.emit_by_name::<()>("tilemap-changed", &[]);
+                            state.set_tilemap_data(t);
+                            state.set_tilemap_file(Some(path));
                         }
                     }
                 });
@@ -277,12 +280,12 @@ impl TilemapEditor {
             .build();
 
         let action_save = ActionEntry::builder("save")
-            .activate(clone!(@weak self as this, @weak parent => move |_, _, _| {
-                let Some(filepath) = this.file() else {return};
+            .activate(clone!(@weak self as this, @weak state => move |_, _, _| {
+                let Some(filepath) = state.tilemap_file() else {return};
                 println!("save tilemap: {filepath:?}");
                 match File::create(filepath) {
                     Ok(f) => {
-                        let _ = this.imp().map_data.borrow().write_to_file(&f);
+                        let _ = state.tilemap_data().write_to_file(&f);
                     },
                     Err(e) => eprintln!("Error saving file: {e}"),
                 }
@@ -290,13 +293,13 @@ impl TilemapEditor {
             .build();
 
         let action_save_as = ActionEntry::builder("saveas")
-            .activate(clone!(@weak self as this, @weak parent => move |_, _, _| {
-                file_save_dialog(parent, move |_, filepath| {
+            .activate(clone!(@weak self as this, @weak state => move |_, _, _| {
+                file_save_dialog(state.clone(), move |_, filepath| {
                     println!("save tilemap: {filepath:?}");
                     match File::create(filepath.clone()) {
                         Ok(f) => {
-                            let _ = this.imp().map_data.borrow().write_to_file(&f);
-                            this.set_file(Some(filepath));
+                            let _ = state.tilemap_data().write_to_file(&f);
+                            state.set_tilemap_file(Some(filepath));
                         },
                         Err(e) => eprintln!("Error saving file: {e}"),
                     }
@@ -309,12 +312,12 @@ impl TilemapEditor {
 
         // bind file to action
         let save = actions.lookup_action("save").unwrap();
-        self.bind_property("file", &save, "enabled")
+        state
+            .bind_property("tilemap_file", &save, "enabled")
             .transform_to(|_, file: Option<PathBuf>| Some(file.is_some()))
             .sync_create()
             .build();
 
-        parent.insert_action_group("tilemap", Some(&actions));
+        state.insert_action_group("tilemap", Some(&actions));
     }
-    */
 }
