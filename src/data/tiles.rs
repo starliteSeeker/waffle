@@ -17,6 +17,49 @@ impl Default for RenameMeTileData {
 }
 
 impl RenameMeTileData {
+    fn from_2bpp(s: &[u8]) -> Option<Self> {
+        // 8 * 8 pixels * 2 (bits/pixel) / 8 (bits/byte)
+        if s.len() != 16 {
+            return None;
+        }
+
+        // s = [bit 0 of pixels 0-7, bit 1 of pixels 0-7,
+        //      bit 0 of pixels 8-15, bit 1 of pixels 8-15, ...]
+        let mut chr = [0; 64];
+        for i in 0..64 {
+            let a = i / 8;
+            let b = i % 8;
+            chr[i] = (s[2 * a] >> (7 - b)) & 0b1; // bit 0
+            chr[i] |= ((s[2 * a + 1] >> (7 - b)) & 0b1) << 1; // bit 1
+        }
+        Some(RenameMeTileData(chr))
+    }
+
+    fn from_4bpp(s: &[u8]) -> Option<Self> {
+        // 8 * 8 pixels * 4 (bits/pixel) / 8 (bits/byte)
+        if s.len() != 32 {
+            return None;
+        }
+
+        // s = [bit 0 of pixels 0-7, bit 1 of pixels 0-7,
+        //      bit 0 of pixels 8-15, bit 1 of pixels 8-15,
+        //      ...
+        //      bit 0 of pixels 56-63, bit 1 of pixels 56-63,
+        //      bit 2 of pixels 0-7, bit 3 of pixels 0-7,
+        //      ...
+        //      bit 2 of pixels 56-63, bit 1 of pixels 56-63]
+        let mut chr = [0; 64];
+        for i in 0..64 {
+            let a = i / 8;
+            let b = i % 8;
+            chr[i] = (s[2 * a] >> (7 - b)) & 0b1; // bit 0
+            chr[i] |= ((s[2 * a + 1] >> (7 - b)) & 0b1) << 1; // bit 1
+            chr[i] |= ((s[16 + 2 * a] >> (7 - b)) & 0b1) << 2; // bit 2
+            chr[i] |= ((s[16 + 2 * a + 1] >> (7 - b)) & 0b1) << 3; // bit 3
+        }
+        Some(RenameMeTileData(chr))
+    }
+
     fn draw(&self, cr: &gtk::cairo::Context, state: &Window, palette_subset: Option<u8>) {
         let pxl_w = TILE_W / 8.0;
         // collect pixels with same color, then draw the pixels together
@@ -58,6 +101,43 @@ impl Default for RenameMeTileset {
 }
 
 impl RenameMeTileset {
+    const MAX: usize = 0b1 << 10;
+
+    pub fn from_file(path: &std::path::PathBuf, bpp: Bpp) -> std::io::Result<Self> {
+        let content = std::fs::read(path)?;
+        let len = content.len();
+        if len == 0 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "file has length 0",
+            ));
+        }
+        let align = 8 * 8 * bpp.bits() as usize / 8;
+        if len % align != 0 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("file does not align with {align} bytes"),
+            ));
+        }
+
+        if len / align > Self::MAX {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("tile count exceeds maximum of {} tiles", Self::MAX),
+            ));
+        }
+
+        let mut tiles = Vec::new();
+        for i in (0..len).step_by(align) {
+            let tile = match bpp {
+                Bpp::Two => RenameMeTileData::from_2bpp(&content[i..i + align]).unwrap(),
+                Bpp::Four => RenameMeTileData::from_4bpp(&content[i..i + align]).unwrap(),
+            };
+            tiles.push(tile);
+        }
+        Ok(RenameMeTileset(tiles))
+    }
+
     pub fn draw_tile(
         &self,
         idx: usize,

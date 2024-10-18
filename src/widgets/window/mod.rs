@@ -54,6 +54,10 @@ impl Window {
     pub fn tileset_data(&self) -> std::cell::Ref<RenameMeTileset> {
         self.imp().tileset_data_2.borrow()
     }
+    pub fn set_tileset_data(&self, tileset: RenameMeTileset) {
+        *self.imp().tileset_data_2.borrow_mut() = tileset;
+        self.emit_by_name::<()>("tileset-data-changed", &[]);
+    }
     pub fn modify_tileset_data(&self, f: impl Fn(&mut RenameMeTileset) -> bool) {
         if f(&mut self.imp().tileset_data_2.borrow_mut()) {
             self.emit_by_name::<()>("tileset-data-changed", &[]);

@@ -38,19 +38,25 @@ pub struct Window {
     #[template_child]
     pub tile_picker: TemplateChild<TilePicker>,
 
+    // color picker properties
     #[property(get, set)]
     picker_color: RefCell<Option<ByteArray>>,
 
+    // palette picker properties
     pub(super) palette_data_2: RefCell<RenameMePalette>,
     #[property(get, set)]
     palette_sel_idx: Cell<u8>,
     #[property(get, set, nullable)]
     palette_file: RefCell<Option<PathBuf>>,
 
+    // tile picker properties
     pub(super) tileset_data_2: RefCell<RenameMeTileset>,
     #[property(get, set)]
     tileset_sel_idx: Cell<u32>,
+    #[property(get, set, nullable)]
+    tileset_file: RefCell<Option<PathBuf>>,
 
+    // tilemap editor properties
     pub(super) tilemap_data: RefCell<RenameMeTilemap>,
 
     #[property(get, set, builder(Bpp::default()))]

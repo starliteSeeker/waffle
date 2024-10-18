@@ -1,22 +1,20 @@
 mod imp;
 
-/*
-use std::cell::RefCell;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::str::FromStr;
 
 use gio::{ActionEntry, SimpleActionGroup};
-*/
 use glib::clone;
-use gtk::prelude::*;
-use gtk::subclass::prelude::*;
 use gtk::GestureClick;
 use gtk::{gio, glib};
+use gtk::{prelude::*, subclass::prelude::*};
 
 use strum::IntoEnumIterator;
 
-use crate::data::list_items::TileSize;
+use crate::data::{
+    list_items::{Bpp, TileSize},
+    tiles::RenameMeTileset,
+};
 use crate::utils::*;
 use crate::widgets::window::Window;
 use crate::TILE_W;
@@ -68,6 +66,8 @@ impl TilePicker {
                     this.set_row_offset(x - 8);
                 }
             }));
+
+        self.file_actions(state);
     }
 
     pub fn render_widget(&self, state: &Window) {
@@ -159,5 +159,68 @@ impl TilePicker {
         self.imp()
             .tile_idx_label
             .set_label(&format!("${:03X} / ${:03X}", idx, max));
+    }
+
+    fn file_actions(&self, state: &Window) {
+        let action_open = ActionEntry::builder("open")
+            .parameter_type(Some(&String::static_variant_type()))
+            .activate(
+                clone!(@weak self as this, @weak state => move |_, _, parameter| {
+                    // parse bit depth parameter
+                    let Some(bpp) = parameter else {return};
+                    let bpp = bpp.get::<String>().expect("parameter should have type String");
+                    let bpp = Bpp::from_str(&bpp).expect("invalid bit depth");
+
+                    file_open_dialog(state.clone(), move |path| {
+                        match RenameMeTileset::from_file(&path, bpp) {
+                            Err(e) => {
+                                eprintln!("Error: {}", e);
+                            }
+                            Ok(t) => {
+                                println!("load tileset: {path:?}");
+                                state.set_tileset_data(t);
+                                state.set_tileset_sel_idx(0);
+                                this.set_row_offset(0);
+                                state.set_tileset_file(Some(path));
+                            }
+                        }
+                    });
+                }),
+            )
+            .build();
+
+        let action_reload = ActionEntry::builder("reload")
+            .activate(clone!(@weak self as this, @weak state => move |_, _, _| {
+                let Some(path) = state.tileset_file() else {
+                    eprintln!("No palette file currently open");
+                    return;
+                };
+                let bpp = state.tile_bpp();
+                match RenameMeTileset::from_file(&path, bpp) {
+                    Err(e) => {
+                        eprintln!("Error: {}", e);
+                    }
+                    Ok(t) => {
+                        println!("reload tileset: {path:?}");
+                        state.set_tileset_data(t);
+                        state.set_tileset_sel_idx(0);
+                        this.set_row_offset(0);
+                    }
+                }
+            }))
+            .build();
+
+        let actions = SimpleActionGroup::new();
+        actions.add_action_entries([action_open, action_reload]);
+
+        // bind file to reload action
+        let reload = actions.lookup_action("reload").unwrap();
+        state
+            .bind_property("tileset_file", &reload, "enabled")
+            .transform_to(|_, file: Option<PathBuf>| Some(file.is_some()))
+            .sync_create()
+            .build();
+
+        state.insert_action_group("tiles", Some(&actions));
     }
 }
