@@ -1,9 +1,6 @@
 use std::cell::{Cell, RefCell};
-use std::path::PathBuf;
-use std::rc::Rc;
-use std::sync::OnceLock;
 
-use glib::subclass::{InitializingObject, Signal};
+use glib::subclass::InitializingObject;
 use glib::Properties;
 use gtk::glib;
 use gtk::prelude::*;
@@ -11,8 +8,10 @@ use gtk::subclass::prelude::*;
 use gtk::{CompositeTemplate, DrawingArea, DropDown, ScrolledWindow, StringList, ToggleButton};
 use strum::IntoEnumIterator;
 
-use crate::data::list_items::{BGMode, BGModeTwo, DrawMode, Zoom};
-use crate::data::tilemap::{Tile, Tilemap};
+use crate::data::{
+    list_items::{BGModeTwo, DrawMode, Zoom},
+    tilemap::Tile,
+};
 
 #[derive(Properties, CompositeTemplate, Default)]
 #[template(resource = "/com/example/waffle/tilemap_editor.ui")]
@@ -41,16 +40,9 @@ pub struct TilemapEditor {
     #[template_child]
     pub priority_btn: TemplateChild<ToggleButton>,
 
-    pub map_data: Rc<RefCell<Tilemap>>,
     #[property(get, set, builder(Zoom::default()))]
     tilemap_zoom: Cell<Zoom>,
     pub curr_tile: RefCell<Tile>,
-
-    pub bg_mode: Rc<RefCell<BGMode>>,
-
-    #[property(get, set, nullable)]
-    pub file: RefCell<Option<PathBuf>>,
-
     pub curr_drag: RefCell<DrawMode>,
 }
 
@@ -85,17 +77,6 @@ impl ObjectImpl for TilemapEditor {
         for i in BGModeTwo::iter() {
             self.mode_list.append(&i.to_string());
         }
-    }
-
-    fn signals() -> &'static [Signal] {
-        static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
-        SIGNALS.get_or_init(|| {
-            vec![
-                Signal::builder("tilemap-changed").build(),
-                Signal::builder("zoom-level-changed").build(),
-                Signal::builder("bg-mode-changed").build(),
-            ]
-        })
     }
 }
 impl WidgetImpl for TilemapEditor {}

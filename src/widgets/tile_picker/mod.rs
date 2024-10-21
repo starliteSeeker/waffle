@@ -13,7 +13,7 @@ use strum::IntoEnumIterator;
 
 use crate::data::{
     list_items::{Bpp, TileSize},
-    tiles::RenameMeTileset,
+    tiles::Tileset,
 };
 use crate::utils::*;
 use crate::widgets::window::Window;
@@ -35,7 +35,6 @@ impl TilePicker {
         gesture.connect_released(clone!(@weak self as this, @weak state => move |_, _, x, y| {
             // account for row offset when calculating correct idx
             let new_idx = (this.row_offset() as f64 + y / TILE_W) as u32 * 16 + (x / TILE_W) as u32;
-            // TODO limit idx max
             if new_idx != state.tileset_sel_idx() {
                 state.set_tileset_sel_idx(new_idx);
             }
@@ -63,7 +62,7 @@ impl TilePicker {
                 let x = this.row_offset();
                 let max_tiles = state.tileset_data().0.len();
                 if x + 8 + 8 < ((max_tiles + 15) / 16) as u32 {
-                    this.set_row_offset(x - 8);
+                    this.set_row_offset(x + 8);
                 }
             }));
 
@@ -172,7 +171,7 @@ impl TilePicker {
                     let bpp = Bpp::from_str(&bpp).expect("invalid bit depth");
 
                     file_open_dialog(state.clone(), move |path| {
-                        match RenameMeTileset::from_file(&path, bpp) {
+                        match Tileset::from_file(&path, bpp) {
                             Err(e) => {
                                 eprintln!("Error: {}", e);
                             }
@@ -196,7 +195,7 @@ impl TilePicker {
                     return;
                 };
                 let bpp = state.tile_bpp();
-                match RenameMeTileset::from_file(&path, bpp) {
+                match Tileset::from_file(&path, bpp) {
                     Err(e) => {
                         eprintln!("Error: {}", e);
                     }

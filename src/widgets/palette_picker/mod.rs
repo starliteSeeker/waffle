@@ -11,7 +11,7 @@ use gtk::GestureClick;
 use gtk::{gio, glib};
 use gtk::{prelude::*, subclass::prelude::*};
 
-use crate::data::{file_format::PaletteFile, list_items::Bpp, palette::RenameMePalette};
+use crate::data::{file_format::PaletteFile, list_items::Bpp, palette::Palette};
 use crate::utils::*;
 use crate::widgets::window::Window;
 use crate::TILE_W;
@@ -57,10 +57,14 @@ impl PalettePicker {
             this.imp().palette_drawing.queue_draw();
         }));
 
+        state.connect_bg_mode_notify(clone!(@weak self as this => move |_| {
+            this.imp().palette_drawing.queue_draw();
+        }));
+
         state.connect_picker_color_notify(move |state| {
             let idx = state.palette_sel_idx() as usize;
             let new_color = state.picker_color_inner();
-            state.modify_palette_data(|RenameMePalette(palette)| {
+            state.modify_palette_data(|Palette(palette)| {
                 if palette[idx] != new_color {
                     palette[idx] = new_color;
                     return true;
@@ -73,7 +77,7 @@ impl PalettePicker {
         self.imp()
             .palette_drawing
             .set_draw_func(clone!(@weak state => move |_, cr, x, y| {
-                let RenameMePalette(palette_data) = *state.palette_data();
+                let Palette(palette_data) = *state.palette_data();
                 let sel_idx = state.palette_sel_idx();
                 let tile_bpp = state.tile_bpp();
 
@@ -161,8 +165,8 @@ impl PalettePicker {
                         state.clone(),
                         move |path| {
                             let file_result = match file_format {
-                                PaletteFile::BGR555 => RenameMePalette::from_file_bgr555(&path),
-                                PaletteFile::RGB24 => RenameMePalette::from_file_rgb24(&path),
+                                PaletteFile::BGR555 => Palette::from_file_bgr555(&path),
+                                PaletteFile::RGB24 => Palette::from_file_rgb24(&path),
                             };
                             match file_result {
                                 Err(e) => {
@@ -193,7 +197,7 @@ impl PalettePicker {
                     return;
                 };
 
-                match RenameMePalette::from_file_bgr555(&file) {
+                match Palette::from_file_bgr555(&file) {
                     Err(e) => {
                         eprintln!("Error: {}", e);
                     }

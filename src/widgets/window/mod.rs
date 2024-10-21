@@ -9,9 +9,9 @@ use gtk::{prelude::*, subclass::prelude::*};
 use crate::data::{
     color::Color,
     list_items::{Bpp, TileSize},
-    palette::RenameMePalette,
-    tilemap::{RenameMeTilemap, Tile},
-    tiles::RenameMeTileset,
+    palette::Palette,
+    tilemap::{Tile, Tilemap},
+    tiles::Tileset,
 };
 
 glib::wrapper! {
@@ -32,15 +32,15 @@ impl Window {
     }
 
     // custom get/set/notify for non-properties
-    pub fn palette_data(&self) -> std::cell::Ref<RenameMePalette> {
-        self.imp().palette_data_2.borrow()
+    pub fn palette_data(&self) -> std::cell::Ref<Palette> {
+        self.imp().palette_data.borrow()
     }
-    pub fn set_palette_data(&self, pal: RenameMePalette) {
-        *self.imp().palette_data_2.borrow_mut() = pal;
+    pub fn set_palette_data(&self, pal: Palette) {
+        *self.imp().palette_data.borrow_mut() = pal;
         self.emit_by_name::<()>("palette-data-changed", &[]);
     }
-    pub fn modify_palette_data(&self, f: impl Fn(&mut RenameMePalette) -> bool) {
-        if f(&mut self.imp().palette_data_2.borrow_mut()) {
+    pub fn modify_palette_data(&self, f: impl Fn(&mut Palette) -> bool) {
+        if f(&mut self.imp().palette_data.borrow_mut()) {
             self.emit_by_name::<()>("palette-data-changed", &[]);
         }
     }
@@ -51,15 +51,15 @@ impl Window {
         });
     }
 
-    pub fn tileset_data(&self) -> std::cell::Ref<RenameMeTileset> {
-        self.imp().tileset_data_2.borrow()
+    pub fn tileset_data(&self) -> std::cell::Ref<Tileset> {
+        self.imp().tileset_data.borrow()
     }
-    pub fn set_tileset_data(&self, tileset: RenameMeTileset) {
-        *self.imp().tileset_data_2.borrow_mut() = tileset;
+    pub fn set_tileset_data(&self, tileset: Tileset) {
+        *self.imp().tileset_data.borrow_mut() = tileset;
         self.emit_by_name::<()>("tileset-data-changed", &[]);
     }
-    pub fn modify_tileset_data(&self, f: impl Fn(&mut RenameMeTileset) -> bool) {
-        if f(&mut self.imp().tileset_data_2.borrow_mut()) {
+    pub fn modify_tileset_data(&self, f: impl Fn(&mut Tileset) -> bool) {
+        if f(&mut self.imp().tileset_data.borrow_mut()) {
             self.emit_by_name::<()>("tileset-data-changed", &[]);
         }
     }
@@ -70,14 +70,14 @@ impl Window {
         });
     }
 
-    pub fn tilemap_data(&self) -> std::cell::Ref<RenameMeTilemap> {
+    pub fn tilemap_data(&self) -> std::cell::Ref<Tilemap> {
         self.imp().tilemap_data.borrow()
     }
-    pub fn set_tilemap_data(&self, tilemap: RenameMeTilemap) {
+    pub fn set_tilemap_data(&self, tilemap: Tilemap) {
         *self.imp().tilemap_data.borrow_mut() = tilemap;
         self.emit_by_name::<()>("tilemap-data-changed", &[]);
     }
-    pub fn modify_tilemap_data(&self, f: impl Fn(&mut RenameMeTilemap) -> bool) {
+    pub fn modify_tilemap_data(&self, f: impl Fn(&mut Tilemap) -> bool) {
         if f(&mut self.imp().tilemap_data.borrow_mut()) {
             self.emit_by_name::<()>("tilemap-data-changed", &[]);
         }
@@ -89,7 +89,7 @@ impl Window {
         });
     }
     pub fn put_tile(&self, idx: usize, tile: &Tile) {
-        self.modify_tilemap_data(|RenameMeTilemap(map)| {
+        self.modify_tilemap_data(|Tilemap(map)| {
             let Some(old_tile) = map.get_mut(idx) else {
                 return false;
             };
@@ -119,6 +119,7 @@ impl Window {
     }
 
     // helpful functions
+    // idx of palette 0 color 0
     pub fn palette_base(&self) -> u8 {
         match self.tile_bpp() {
             Bpp::Two => self.bg_mode().palette_offset(),
@@ -126,11 +127,17 @@ impl Window {
         }
     }
 
+    // check if a selected 8x8 or 16x16 tile is valid
     pub fn is_valid_tileset_idx(&self) -> bool {
         let tile_len = self.tileset_data().0.len();
         match self.tile_size() {
             TileSize::Eight => (self.tileset_sel_idx() as usize) < tile_len,
             TileSize::Sixteen => self.tileset_sel_idx() as usize + 16 + 1 < tile_len,
         }
+    }
+
+    // palette selected in palette picker
+    pub fn curr_palette(&self) -> u8 {
+        (self.palette_sel_idx().wrapping_sub(self.palette_base()) / self.tile_bpp().to_val()) % 8
     }
 }

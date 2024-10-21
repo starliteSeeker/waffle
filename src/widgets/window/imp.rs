@@ -1,24 +1,21 @@
 use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::sync::OnceLock;
 
-use gio::{ActionEntry, SimpleActionGroup};
-use glib::clone;
 use glib::subclass::InitializingObject;
 use glib::subclass::Signal;
 use glib::ByteArray;
 use glib::Properties;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-use gtk::{gio, glib, CompositeTemplate};
+use gtk::{glib, CompositeTemplate};
 
 use crate::data::{
     color::Color,
     list_items::{BGModeTwo, Bpp, TileSize},
-    palette::{Palette, RenameMePalette},
-    tilemap::RenameMeTilemap,
-    tiles::{RenameMeTileset, Tileset},
+    palette::Palette,
+    tilemap::Tilemap,
+    tiles::Tileset,
 };
 use crate::widgets::{
     color_picker::ColorPicker, palette_picker::PalettePicker, tile_picker::TilePicker,
@@ -43,21 +40,21 @@ pub struct Window {
     picker_color: RefCell<Option<ByteArray>>,
 
     // palette picker properties
-    pub(super) palette_data_2: RefCell<RenameMePalette>,
+    pub(super) palette_data: RefCell<Palette>,
     #[property(get, set)]
     palette_sel_idx: Cell<u8>,
     #[property(get, set, nullable)]
     palette_file: RefCell<Option<PathBuf>>,
 
     // tile picker properties
-    pub(super) tileset_data_2: RefCell<RenameMeTileset>,
+    pub(super) tileset_data: RefCell<Tileset>,
     #[property(get, set)]
     tileset_sel_idx: Cell<u32>,
     #[property(get, set, nullable)]
     tileset_file: RefCell<Option<PathBuf>>,
 
     // tilemap editor properties
-    pub(super) tilemap_data: RefCell<RenameMeTilemap>,
+    pub(super) tilemap_data: RefCell<Tilemap>,
     #[property(get, set, nullable)]
     tilemap_file: RefCell<Option<PathBuf>>,
 
@@ -67,9 +64,6 @@ pub struct Window {
     pub bg_mode: Cell<BGModeTwo>,
     #[property(get, set, builder(TileSize::default()))]
     pub tile_size: Cell<TileSize>,
-
-    pub palette_data: Rc<RefCell<Palette>>,
-    pub tile_data: Rc<RefCell<Tileset>>,
 }
 
 // The central trait for subclassing a GObject
@@ -115,26 +109,12 @@ impl ObjectImpl for Window {
 
         self.tilemap_editor.handle_action(&obj);
         self.tilemap_editor.render_widget(&obj);
-
-        // debug stuff
-        /* TODO remove when finishsed */
-        let action_debug = ActionEntry::builder("printstuff")
-            .activate(clone!(@weak self as this => move |_, _, _| {
-                println!("debug");
-            }))
-            .build();
-        let actions = SimpleActionGroup::new();
-        actions.add_action_entries([action_debug]);
-        self.obj().insert_action_group("debug", Some(&actions));
     }
 
     fn signals() -> &'static [Signal] {
         static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
         SIGNALS.get_or_init(|| {
             vec![
-                Signal::builder("set-color")
-                    .param_types([u32::static_type(), u32::static_type(), u32::static_type()])
-                    .build(),
                 Signal::builder("palette-data-changed").build(),
                 Signal::builder("tileset-data-changed").build(),
                 Signal::builder("tilemap-data-changed").build(),

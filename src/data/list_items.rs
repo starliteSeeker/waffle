@@ -115,49 +115,6 @@ impl BGModeTwo {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-pub enum BGMode {
-    Two(BGModeTwo),
-    Four,
-}
-
-impl Default for BGMode {
-    fn default() -> Self {
-        BGMode::Two(BGModeTwo::M0BG1)
-    }
-}
-
-impl BGMode {
-    // which part of the palette is used is decided by BGMode
-    // 4bpp backgrounds use colors 0-127
-    // 2bpp backgrounds use a range of 32 colors starting from palette_offset()
-    pub fn palette_offset(&self) -> u8 {
-        match self {
-            BGMode::Two(t) => t.palette_offset(),
-            BGMode::Four => 0,
-        }
-    }
-
-    pub fn bpp(&self) -> Bpp {
-        match self {
-            BGMode::Two(_) => Bpp::Two,
-            BGMode::Four => Bpp::Four,
-        }
-    }
-
-    pub fn idx_to_pal_sel(&self, mut idx: u8) -> Option<u8> {
-        if idx < self.palette_offset() {
-            return None;
-        }
-        idx -= self.palette_offset();
-        idx /= self.bpp().to_val();
-        if idx >= 8 {
-            return None;
-        }
-        return Some(idx);
-    }
-}
-
 #[derive(Debug, Default, Clone, Copy)]
 pub enum DrawMode {
     #[default]
@@ -179,7 +136,8 @@ impl DrawMode {
                 );
                 ix >= x_min && ix <= x_max && iy >= y_min && iy <= y_max
             }
-            _ => false,
+            DrawMode::Pen => false,
+            DrawMode::None => false,
         }
     }
 }

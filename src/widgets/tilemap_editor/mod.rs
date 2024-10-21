@@ -14,7 +14,7 @@ use gtk::{gio, glib};
 
 use crate::data::{
     list_items::{BGModeTwo, DrawMode, TileSize, Zoom},
-    tilemap::RenameMeTilemap,
+    tilemap::Tilemap,
 };
 use crate::utils::*;
 use crate::widgets::window::Window;
@@ -53,6 +53,14 @@ impl TilemapEditor {
             if let Err(e) = imp.curr_tile.borrow_mut().set_tile_idx_checked(state.tileset_sel_idx() as u16) {
                 eprintln!("{e}");
             };
+        }));
+
+        // change current tile palette
+        state.connect_palette_data_notify(clone!(@weak imp => move |state| {
+            imp.curr_tile.borrow_mut().set_palette(state.curr_palette());
+        }));
+        state.connect_palette_sel_idx_notify(clone!(@weak imp => move |state| {
+            imp.curr_tile.borrow_mut().set_palette(state.curr_palette());
         }));
 
         // tilemap view settings
@@ -265,7 +273,7 @@ impl TilemapEditor {
         let action_open = ActionEntry::builder("open")
             .activate(clone!(@weak self as this, @weak state => move |_, _, _| {
                 file_open_dialog(state.clone(), move |path| {
-                    match RenameMeTilemap::from_file(&path) {
+                    match Tilemap::from_file(&path) {
                         Err(e) => {
                             eprintln!("Error: {}", e);
                         }
