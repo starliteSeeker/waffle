@@ -13,7 +13,7 @@ use gtk::GestureDrag;
 use gtk::{gio, glib};
 
 use crate::data::{
-    list_items::{BGModeTwo, DrawMode, TileSize, Zoom},
+    list_items::{BGModeTwo, Bpp, DrawMode, TileSize, Zoom},
     tilemap::Tilemap,
 };
 use crate::utils::*;
@@ -92,6 +92,10 @@ impl TilemapEditor {
             this.imp().tilemap_drawing.queue_draw();
         }));
 
+        state.connect_tileset_data_notify(clone!(@weak self as this => move |_| {
+            this.imp().tilemap_drawing.queue_draw();
+        }));
+
         state.connect_tile_size_notify(clone!(@weak self as this => move |_| {
             this.imp().tilemap_drawing.queue_draw();
         }));
@@ -102,6 +106,10 @@ impl TilemapEditor {
 
         state.connect_tilemap_data_notify(clone!(@weak self as this => move |_| {
             this.imp().tilemap_drawing.queue_draw();
+        }));
+
+        state.connect_tile_bpp_notify(clone!(@weak self as this => move |state| {
+            this.imp().mode_select.set_sensitive(state.tile_bpp() == Bpp::Two);
         }));
 
         self.imp().tilemap_drawing.set_draw_func(

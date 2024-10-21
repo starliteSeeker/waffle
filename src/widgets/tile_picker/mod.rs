@@ -179,6 +179,7 @@ impl TilePicker {
                                 println!("load tileset: {path:?}");
                                 state.set_tileset_data(t);
                                 state.set_tileset_sel_idx(0);
+                                state.set_tile_bpp(bpp);
                                 this.set_row_offset(0);
                                 state.set_tileset_file(Some(path));
                             }
