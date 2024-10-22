@@ -1,13 +1,11 @@
 mod imp;
 
-use std::cell::RefCell;
-use std::rc::Rc;
-
-use gtk::glib::{self, closure_local, object::ObjectExt};
+use gtk::glib::{self, clone};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 
 use crate::data::palette::Palette;
+use crate::widgets::window::Window;
 
 glib::wrapper! {
     pub struct ColorPicker(ObjectSubclass<imp::ColorPicker>)
@@ -17,54 +15,70 @@ glib::wrapper! {
 }
 
 impl ColorPicker {
-    pub fn setup_all<O: ObjectExt>(&self, palette_obj: O, palette_data: Rc<RefCell<Palette>>) {
-        self.setup_signal_connection(palette_obj, palette_data);
+    pub fn handle_action(&self, state: &Window) {
+        // rgb sliders
+        let imp = self.imp();
+        imp.red_slider
+            .connect_value_changed(clone!(@weak state => move |this| {
+                // change red value of picker color
+                let val = this.adjustment().value();
+                state.modify_picker_color(|c| c.with_red(val.round() as u8));
+            }));
+        imp.green_slider
+            .connect_value_changed(clone!(@weak state => move |this| {
+                // change green value of picker color
+                let val = this.adjustment().value();
+                state.modify_picker_color(|c| c.with_green(val.round() as u8));
+            }));
+        imp.blue_slider
+            .connect_value_changed(clone!(@weak state => move |this| {
+                // change blue value of picker color
+                let val = this.adjustment().value();
+                state.modify_picker_color(|c| c.with_blue(val.round() as u8));
+            }));
     }
 
-    fn setup_signal_connection<O: ObjectExt>(
-        &self,
-        palette_obj: O,
-        palette_data: Rc<RefCell<Palette>>,
-    ) {
-        palette_obj.connect_closure(
-            "color-idx-changed",
-            false,
-            closure_local!(@weak-allow-none self as this => move |_: O, _: u8, mut red: u8, mut green: u8, mut blue: u8| {
-                let Some(this) = this else {return};
-                red = red.min(31);
-                green = green.min(31);
-                blue = blue.min(31);
-                if red != this.red() || green != this.green() || blue != this.blue() {
-                    this.set_red(red);
-                    this.set_green(green);
-                    this.set_blue(blue);
-                    this.emit_by_name::<()>("color-changed", &[&red, &green, &blue]);
-                }
-            }),
-        );
-        palette_obj.connect_closure(
-            "palette_changed",
-            false,
-            closure_local!(@weak-allow-none self as this, @weak-allow-none palette_data => move |_: O| {
-                let Some(this) = this else {return};
-                let Some(palette_data) = palette_data else {return};
-                let (r, g, b) = palette_data.borrow().curr_color().to_tuple();
-                if r != this.red() || g != this.green() || b != this.blue() {
-                    this.set_red(r);
-                    this.set_green(g);
-                    this.set_blue(b);
-                    this.emit_by_name::<()>("color-changed", &[&r, &g, &b]);
-                }
-            }),
-        );
+    pub fn render_widget(&self, state: &Window) {
+        state.connect_picker_color_notify(clone!(@weak self as this => move |state| {
+            let imp = this.imp();
+            let color = state.picker_color_inner();
 
-        // redraw self
-        self.connect_closure(
-            "color-changed",
-            false,
-            closure_local!(|this: Self, _: u8, _: u8, _: u8| {
-                this.imp().color_square.queue_draw();
-            }),
-        );
+            // update slider position
+            imp.red_adj.set_value(color.red().into());
+            imp.green_adj.set_value(color.green().into());
+            imp.blue_adj.set_value(color.blue().into());
+
+            // redraw current color
+            imp.color_square.queue_draw();
+        }));
+
+        state.connect_palette_sel_idx_notify(clone!(@weak self as this => move |state| {
+            // load new color
+            let Palette(palette_data): Palette = *state.palette_data();
+            let new_color = palette_data[state.palette_sel_idx() as usize];
+            if new_color == state.picker_color_inner() {
+                return;
+            }
+            state.modify_picker_color(|_| new_color);
+        }));
+
+        state.connect_palette_data_notify(clone!(@weak self as this => move |state| {
+            // load new color
+            let Palette(palette_data): Palette = *state.palette_data();
+            let new_color = palette_data[state.palette_sel_idx() as usize];
+            if new_color == state.picker_color_inner() {
+                return;
+            }
+            state.modify_picker_color(|_| new_color);
+        }));
+
+        self.imp()
+            .color_square
+            .set_draw_func(clone!(@weak state => move |_, cr, _, _| {
+                let curr_color = state.picker_color_inner();
+                let (r, g, b) = curr_color.to_cairo();
+                cr.set_source_rgb(r, g, b);
+                let _ = cr.paint();
+            }));
     }
 }

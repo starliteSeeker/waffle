@@ -34,6 +34,8 @@ fn on_startup(app: &Application) {
 
     let icon_theme = IconTheme::for_display(&Display::default().unwrap());
     icon_theme.add_resource_path("/com/example/waffle/icons/48x48/status/");
+
+    app.set_accels_for_action("debug.printstuff", &[&"<Ctrl>d"]);
 }
 
 fn build_ui(app: &Application) {

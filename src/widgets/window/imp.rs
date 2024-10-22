@@ -1,22 +1,30 @@
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::cell::{Cell, RefCell};
+use std::path::PathBuf;
 use std::sync::OnceLock;
 
 use glib::subclass::InitializingObject;
 use glib::subclass::Signal;
+use glib::ByteArray;
+use glib::Properties;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{glib, CompositeTemplate};
 
-use crate::data::palette::Palette;
-use crate::data::tiles::Tileset;
-use crate::widgets::color_picker::ColorPicker;
-use crate::widgets::palette_picker::PalettePicker;
-use crate::widgets::tile_picker::TilePicker;
-use crate::widgets::tilemap_editor::TilemapEditor;
+use crate::data::{
+    color::Color,
+    list_items::{BGModeTwo, Bpp, TileSize},
+    palette::Palette,
+    tilemap::Tilemap,
+    tiles::Tileset,
+};
+use crate::widgets::{
+    color_picker::ColorPicker, palette_picker::PalettePicker, tile_picker::TilePicker,
+    tilemap_editor::TilemapEditor,
+};
 
-#[derive(CompositeTemplate, Default)]
+#[derive(CompositeTemplate, Properties, Default)]
 #[template(resource = "/com/example/waffle/window.ui")]
+#[properties(wrapper_type = super::Window)]
 pub struct Window {
     #[template_child]
     pub color_picker: TemplateChild<ColorPicker>,
@@ -27,8 +35,35 @@ pub struct Window {
     #[template_child]
     pub tile_picker: TemplateChild<TilePicker>,
 
-    pub palette_data: Rc<RefCell<Palette>>,
-    pub tile_data: Rc<RefCell<Tileset>>,
+    // color picker properties
+    #[property(get, set)]
+    picker_color: RefCell<Option<ByteArray>>,
+
+    // palette picker properties
+    pub(super) palette_data: RefCell<Palette>,
+    #[property(get, set)]
+    palette_sel_idx: Cell<u8>,
+    #[property(get, set, nullable)]
+    palette_file: RefCell<Option<PathBuf>>,
+
+    // tile picker properties
+    pub(super) tileset_data: RefCell<Tileset>,
+    #[property(get, set)]
+    tileset_sel_idx: Cell<u32>,
+    #[property(get, set, nullable)]
+    tileset_file: RefCell<Option<PathBuf>>,
+
+    // tilemap editor properties
+    pub(super) tilemap_data: RefCell<Tilemap>,
+    #[property(get, set, nullable)]
+    tilemap_file: RefCell<Option<PathBuf>>,
+
+    #[property(get, set, builder(Bpp::default()))]
+    pub tile_bpp: Cell<Bpp>,
+    #[property(get, set, builder(BGModeTwo::default()))]
+    pub bg_mode: Cell<BGModeTwo>,
+    #[property(get, set, builder(TileSize::default()))]
+    pub tile_size: Cell<TileSize>,
 }
 
 // The central trait for subclassing a GObject
@@ -53,49 +88,37 @@ impl ObjectSubclass for Window {
 }
 
 // Trait shared by all GObjects
+#[glib::derived_properties]
 impl ObjectImpl for Window {
     fn constructed(&self) {
         self.parent_constructed();
 
-        let bg_mode = self.tilemap_editor.imp().bg_mode.clone();
+        let obj = self.obj();
 
-        self.palette_picker.setup_all(
-            self.palette_data.clone(),
-            self.obj().clone(),
-            self.color_picker.clone(),
-            bg_mode.clone(),
-            self.tilemap_editor.clone(),
-        );
+        // initialize variables
+        obj.set_picker_color(ByteArray::from(&Color::default().into_bytes()));
 
-        self.color_picker
-            .setup_all(self.palette_picker.clone(), self.palette_data.clone());
+        self.color_picker.handle_action(&obj);
+        self.color_picker.render_widget(&obj);
 
-        self.tile_picker.setup_all(
-            self.obj().clone(),
-            self.palette_data.clone(),
-            self.tile_data.clone(),
-            self.palette_picker.clone(),
-            bg_mode.clone(),
-            self.tilemap_editor.clone(),
-        );
+        self.palette_picker.handle_action(&obj);
+        self.palette_picker.render_widget(&obj);
 
-        // setup tilemap editor
-        self.tilemap_editor.setup_all(
-            self.palette_data.clone(),
-            self.tile_data.clone(),
-            self.tile_picker.imp().tile_size.clone(),
-            self.palette_picker.clone(),
-            self.tile_picker.clone(),
-            self.obj().clone(),
-        );
+        self.tile_picker.handle_action(&obj);
+        self.tile_picker.render_widget(&obj);
+
+        self.tilemap_editor.handle_action(&obj);
+        self.tilemap_editor.render_widget(&obj);
     }
 
     fn signals() -> &'static [Signal] {
         static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
         SIGNALS.get_or_init(|| {
-            vec![Signal::builder("set-color")
-                .param_types([u32::static_type(), u32::static_type(), u32::static_type()])
-                .build()]
+            vec![
+                Signal::builder("palette-data-changed").build(),
+                Signal::builder("tileset-data-changed").build(),
+                Signal::builder("tilemap-data-changed").build(),
+            ]
         })
     }
 }

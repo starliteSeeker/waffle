@@ -1,34 +1,18 @@
-use std::cell::{OnceCell, RefCell};
-use std::path::PathBuf;
-use std::rc::Rc;
-use std::sync::OnceLock;
-
-use glib::subclass::{InitializingObject, Signal};
-use glib::Properties;
+use glib::subclass::InitializingObject;
 use gtk::glib;
-use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::CompositeTemplate;
 use gtk::{DrawingArea, Label, ScrolledWindow};
 
-use crate::data::list_items::BGMode;
-
-#[derive(CompositeTemplate, Properties, Default)]
+#[derive(CompositeTemplate, Default)]
 #[template(resource = "/com/example/waffle/palette_picker.ui")]
-#[properties(wrapper_type = super::PalettePicker)]
 pub struct PalettePicker {
     #[template_child]
     pub palette_scroll: TemplateChild<ScrolledWindow>,
     #[template_child]
     pub palette_drawing: TemplateChild<DrawingArea>,
-
     #[template_child]
     pub color_idx_label: TemplateChild<Label>,
-
-    #[property(get, set, nullable)]
-    pub file: RefCell<Option<PathBuf>>,
-
-    pub bg_mode: OnceCell<Rc<RefCell<BGMode>>>,
 }
 
 // The central trait for subclassing a GObject
@@ -47,31 +31,12 @@ impl ObjectSubclass for PalettePicker {
     }
 }
 
-#[glib::derived_properties]
 impl ObjectImpl for PalettePicker {
     fn constructed(&self) {
         self.parent_constructed();
 
         // initialize label
         self.obj().set_label(0);
-    }
-
-    fn signals() -> &'static [Signal] {
-        static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
-        SIGNALS.get_or_init(|| {
-            vec![
-                Signal::builder("palette-changed").build(),
-                // parameters: new-idx, red, green, blue
-                Signal::builder("color-idx-changed")
-                    .param_types([
-                        u8::static_type(),
-                        u8::static_type(),
-                        u8::static_type(),
-                        u8::static_type(),
-                    ])
-                    .build(),
-            ]
-        })
     }
 }
 impl WidgetImpl for PalettePicker {}

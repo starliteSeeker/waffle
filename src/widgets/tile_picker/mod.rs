@@ -1,20 +1,20 @@
 mod imp;
 
-use std::cell::RefCell;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::str::FromStr;
 
 use gio::{ActionEntry, SimpleActionGroup};
-use glib::{clone, closure_local};
-use gtk::prelude::*;
-use gtk::subclass::prelude::*;
+use glib::clone;
 use gtk::GestureClick;
 use gtk::{gio, glib};
+use gtk::{prelude::*, subclass::prelude::*};
 
-use crate::data::list_items::{BGMode, Bpp, TileSize};
-use crate::data::palette::Palette;
-use crate::data::tiles::Tileset;
+use strum::IntoEnumIterator;
+
+use crate::data::{
+    list_items::{Bpp, TileSize},
+    tiles::Tileset,
+};
 use crate::utils::*;
 use crate::widgets::window::Window;
 use crate::TILE_W;
@@ -27,178 +27,79 @@ glib::wrapper! {
 }
 
 impl TilePicker {
-    pub fn setup_all<P: WidgetExt, M: WidgetExt>(
-        &self,
-        parent: Window,
-        pal: Rc<RefCell<Palette>>,
-        tile_data: Rc<RefCell<Tileset>>,
-        palette_obj: P,
-        bg_mode: Rc<RefCell<BGMode>>,
-        map_obj: M,
-    ) {
-        self.setup_gesture(tile_data.clone());
-        self.setup_actions(parent, tile_data.clone());
-        self.setup_signal_connection(tile_data.clone(), palette_obj.clone(), map_obj);
-        self.setup_draw(pal, tile_data, bg_mode);
-    }
+    pub fn handle_action(&self, state: &Window) {
+        let imp = self.imp();
 
-    fn setup_gesture(&self, tile_data: Rc<RefCell<Tileset>>) {
+        // mouse click on tileset drawing
         let gesture = GestureClick::new();
-        gesture.connect_released(clone!(@weak self as this => move |_, _, x, y| {
+        gesture.connect_released(clone!(@weak self as this, @weak state => move |_, _, x, y| {
             // account for row offset when calculating correct idx
-            let new_idx = (*this.imp().row_offset.borrow() as f64 + y / TILE_W) as u16 * 16 + (x / TILE_W) as u16;
-            // emit signal
-            if tile_data.borrow_mut().set_idx(new_idx) {
-                this.emit_by_name::<()>("tile-idx-changed", &[&(new_idx as u32)]);
+            let new_idx = (this.row_offset() as f64 + y / TILE_W) as u32 * 16 + (x / TILE_W) as u32;
+            if new_idx != state.tileset_sel_idx() {
+                state.set_tileset_sel_idx(new_idx);
             }
         }));
-        self.imp().tile_drawing.add_controller(gesture);
-    }
+        imp.tile_drawing.add_controller(gesture);
 
-    fn setup_actions(&self, parent: Window, tile_data: Rc<RefCell<Tileset>>) {
-        let action_open = ActionEntry::builder("open")
-            .parameter_type(Some(&String::static_variant_type()))
-            .activate(
-                clone!(@weak self as this, @weak tile_data, @weak parent => move |_, _, parameter| {
-                    // parse bit depth parameter
-                    let Some(bpp) = parameter else {return};
-                    let bpp = bpp.get::<String>().expect("parameter should have type String");
-                    let bpp = Bpp::from_str(&bpp).expect("invalid bit depth");
-
-                    file_open_dialog(parent, move |path| {
-                        match Tileset::from_path(&path, bpp) {
-                            Err(e) => {
-                                eprintln!("Error: {}", e);
-                            }
-                            Ok(t) => {
-                                println!("load tileset: {path:?}");
-                                *tile_data.borrow_mut() = t;
-                                *this.imp().row_offset.borrow_mut() = 0;
-                                this.set_file(Some(path));
-                                this.emit_by_name::<()>("tile-changed", &[]);
-                                this.emit_by_name::<()>("bpp-changed", &[&(bpp as u8)]);
-                            }
-                        }
-                    });
-                }),
-            )
-            .build();
-
-        let action_reload = ActionEntry::builder("reload")
-            .activate(
-                clone!(@weak self as this, @weak tile_data => move |_, _, _| {
-                    let Some(path) = this.file() else {
-                        eprintln!("No palette file currently open");
-                        return;
-                    };
-                    let bpp = tile_data.borrow().bpp();
-                    match Tileset::from_path(&path, bpp) {
-                        Err(e) => {
-                            eprintln!("Error: {}", e);
-                        }
-                        Ok(t) => {
-                            println!("load tileset: {path:?}");
-                            *tile_data.borrow_mut() = t;
-                            *this.imp().row_offset.borrow_mut() = 0;
-                            this.emit_by_name::<()>("tile-changed", &[]);
-                        }
-                    }
-                }),
-            )
-            .build();
-        let actions = SimpleActionGroup::new();
-        actions.add_action_entries([action_open, action_reload]);
-
-        // bind file to reload action
-        let reload = actions.lookup_action("reload").unwrap();
-        self.bind_property("file", &reload, "enabled")
-            .transform_to(|_, file: Option<PathBuf>| Some(file.is_some()))
-            .sync_create()
-            .build();
-
-        parent.insert_action_group("tiles", Some(&actions));
-    }
-
-    fn setup_signal_connection<P: WidgetExt, M: WidgetExt>(
-        &self,
-        tile_data: Rc<RefCell<Tileset>>,
-        palette_obj: P,
-        map_obj: M,
-    ) {
-        // redraw/update self
-        self.connect_closure(
-            "tile-idx-changed",
-            false,
-            closure_local!(@weak-allow-none tile_data => move |this: Self, _: u32| {
-                this.imp().tile_drawing.queue_draw();
-                let Some(tile_data) = tile_data else {return};
-                this.set_index_label(tile_data.borrow().get_idx(), tile_data.borrow().get_size() as u16 - 1);
-            }),
-        );
-        self.connect_closure(
-            "tile-changed",
-            false,
-            closure_local!(@weak-allow-none tile_data => move |this: Self| {
-                this.imp().tile_drawing.queue_draw();
-                let Some(tile_data) = tile_data else {return};
-                this.set_index_label(tile_data.borrow().get_idx(), tile_data.borrow().get_size() as u16 - 1);
-            }),
-        );
-        palette_obj.connect_closure(
-            "color-idx-changed",
-            false,
-            closure_local!(@weak-allow-none self as this => move |_: P, _: u8, _: u8, _: u8, _: u8| {
-                let Some(this) = this else {return};
-                this.imp().tile_drawing.queue_draw();
-            }),
-        );
-        palette_obj.connect_closure(
-            "palette-changed",
-            false,
-            closure_local!(@weak-allow-none self as this => move |_: P| {
-                let Some(this) = this else {return};
-                this.imp().tile_drawing.queue_draw();
-            }),
-        );
-
-        map_obj.connect_closure(
-            "bg-mode-changed",
-            false,
-            closure_local!(@weak-allow-none self as this => move |_: M| {
-                let Some(this) = this else {return};
-                this.imp().tile_drawing.queue_draw();
-            }),
-        );
+        // tile size dropdown
+        imp.tile_size_select
+            .connect_selected_notify(clone!(@weak imp, @weak state => move |_| {
+                let new_size = TileSize::iter().nth(imp.tile_size_select.selected() as usize).unwrap();
+                state.set_tile_size(new_size);
+            }));
 
         // scroll up and down button
         let imp = self.imp();
         imp.tile_prev
-            .connect_clicked(clone!(@weak imp, @weak tile_data => move |_| {
-                let x = *imp.row_offset.borrow();
+            .connect_clicked(clone!(@weak self as this => move |_| {
+                let x = this.row_offset();
                 if x >= 8 {
-                    *imp.row_offset.borrow_mut() = x - 8;
+                    this.set_row_offset(x - 8);
                 }
-                imp.tile_drawing.queue_draw();
             }));
-        imp.tile_next.connect_clicked(clone!(@weak imp => move |_| {
-            let x = *imp.row_offset.borrow();
-            let max_row = (tile_data.borrow().get_size() + 15) / 16;
-            if x + 8 + 8 < max_row as u32 {
-                *imp.row_offset.borrow_mut() = x + 8;
-            }
-            imp.tile_drawing.queue_draw();
-        }));
+        imp.tile_next
+            .connect_clicked(clone!(@weak self as this, @weak state => move |_| {
+                let x = this.row_offset();
+                let max_tiles = state.tileset_data().0.len();
+                if x + 8 + 8 < ((max_tiles + 15) / 16) as u32 {
+                    this.set_row_offset(x + 8);
+                }
+            }));
+
+        self.file_actions(state);
     }
 
-    fn setup_draw(
-        &self,
-        palette_data: Rc<RefCell<Palette>>,
-        tile_data: Rc<RefCell<Tileset>>,
-        bg_mode: Rc<RefCell<BGMode>>,
-    ) {
-        let imp = self.imp();
-        imp.tile_drawing.set_draw_func(
-            clone!(@weak palette_data, @weak tile_data, @weak imp.row_offset as row_offset, @weak imp.tile_size as tile_size => move |_, cr, w, _| {
+    pub fn render_widget(&self, state: &Window) {
+        state.connect_tileset_data_notify(clone!(@weak self as this => move |_| {
+            this.imp().tile_drawing.queue_draw();
+        }));
+
+        state.connect_tileset_sel_idx_notify(clone!(@weak self as this => move |state| {
+            this.set_index_label(state.tileset_sel_idx() as u16, state.tileset_data().0.len() as u16 - 1);
+            this.imp().tile_drawing.queue_draw();
+        }));
+
+        self.connect_row_offset_notify(clone!(@weak self as this => move |_| {
+            this.imp().tile_drawing.queue_draw();
+        }));
+
+        state.connect_palette_data_notify(clone!(@weak self as this => move |_| {
+            this.imp().tile_drawing.queue_draw();
+        }));
+
+        state.connect_palette_sel_idx_notify(clone!(@weak self as this => move |_| {
+            this.imp().tile_drawing.queue_draw();
+        }));
+
+        state.connect_tile_size_notify(clone!(@weak self as this => move |_| {
+            this.imp().tile_drawing.queue_draw();
+        }));
+
+        self.imp().tile_drawing.set_draw_func(
+            clone!(@weak self as this, @weak state => move |_, cr, w, _| {
+                let tiles = &state.tileset_data();
+                let row_offset = this.row_offset();
+
                 // default color
                 cr.set_source_rgb(0.4, 0.4, 0.4);
                 let _ = cr.paint();
@@ -206,31 +107,34 @@ impl TilePicker {
                 let tile_w = w as f64 / 16.0;
 
                 // 16 8x8 tiles per row
-                let row_offset = *row_offset.borrow();
-                let tiles = &tile_data.borrow().tiles;
                 for i in 0..256 {
                     let ti = (i + row_offset * 16) as usize;
-                    if ti >= tiles.len() {
+                    if ti >= tiles.0.len() {
                         break;
                     }
                     let x_offset = (i % 16) as f64 * tile_w;
                     let y_offset = (i / 16) as f64 * tile_w;
                     let _ = cr.save();
                     cr.translate(x_offset, y_offset);
-                    tiles[ti].draw(cr, palette_data.clone(), None, &bg_mode.borrow());
+                    tiles.draw_tile(ti, cr, &state, None);
                     let _ = cr.restore();
                 }
 
                 // draw selected tile outline
                 let _ = cr.save();
                 cr.translate(0.0, -(row_offset as f64) * tile_w);
-                let idx = tile_data.borrow().get_idx();
-                match *tile_size.borrow() {
+                let idx = state.tileset_sel_idx();
+                let tile_size = state.tile_size();
+                if state.is_valid_tileset_idx() {
+                    cr.set_source_rgb(0.8, 0.8, 0.0);
+                } else {
+                    cr.set_source_rgb(0.5, 0.5, 0.5);
+                }
+                match tile_size {
                     TileSize::Eight => {
                         let x = (idx % 16) as f64 * tile_w;
                         let y = (idx / 16) as f64 * tile_w;
                         cr.rectangle(x, y, tile_w, tile_w);
-                        cr.set_source_rgb(0.8, 0.8, 0.0);
                     },
                     TileSize::Sixteen => {
                         let x = (idx % 16) as f64 * tile_w;
@@ -239,11 +143,6 @@ impl TilePicker {
                         if idx % 16 == 15 {
                             // wrap around
                             cr.rectangle(-tile_w, y + tile_w, tile_w * 2.0, tile_w * 2.0);
-                        }
-                        if tile_data.borrow().is_valid_16() {
-                            cr.set_source_rgb(0.8, 0.8, 0.0);
-                        } else {
-                            cr.set_source_rgb(0.5, 0.5, 0.5);
                         }
                     },
                 };
@@ -259,5 +158,69 @@ impl TilePicker {
         self.imp()
             .tile_idx_label
             .set_label(&format!("${:03X} / ${:03X}", idx, max));
+    }
+
+    fn file_actions(&self, state: &Window) {
+        let action_open = ActionEntry::builder("open")
+            .parameter_type(Some(&String::static_variant_type()))
+            .activate(
+                clone!(@weak self as this, @weak state => move |_, _, parameter| {
+                    // parse bit depth parameter
+                    let Some(bpp) = parameter else {return};
+                    let bpp = bpp.get::<String>().expect("parameter should have type String");
+                    let bpp = Bpp::from_str(&bpp).expect("invalid bit depth");
+
+                    file_open_dialog(state.clone(), move |path| {
+                        match Tileset::from_file(&path, bpp) {
+                            Err(e) => {
+                                eprintln!("Error: {}", e);
+                            }
+                            Ok(t) => {
+                                println!("load tileset: {path:?}");
+                                state.set_tileset_data(t);
+                                state.set_tileset_sel_idx(0);
+                                state.set_tile_bpp(bpp);
+                                this.set_row_offset(0);
+                                state.set_tileset_file(Some(path));
+                            }
+                        }
+                    });
+                }),
+            )
+            .build();
+
+        let action_reload = ActionEntry::builder("reload")
+            .activate(clone!(@weak self as this, @weak state => move |_, _, _| {
+                let Some(path) = state.tileset_file() else {
+                    eprintln!("No palette file currently open");
+                    return;
+                };
+                let bpp = state.tile_bpp();
+                match Tileset::from_file(&path, bpp) {
+                    Err(e) => {
+                        eprintln!("Error: {}", e);
+                    }
+                    Ok(t) => {
+                        println!("reload tileset: {path:?}");
+                        state.set_tileset_data(t);
+                        state.set_tileset_sel_idx(0);
+                        this.set_row_offset(0);
+                    }
+                }
+            }))
+            .build();
+
+        let actions = SimpleActionGroup::new();
+        actions.add_action_entries([action_open, action_reload]);
+
+        // bind file to reload action
+        let reload = actions.lookup_action("reload").unwrap();
+        state
+            .bind_property("tileset_file", &reload, "enabled")
+            .transform_to(|_, file: Option<PathBuf>| Some(file.is_some()))
+            .sync_create()
+            .build();
+
+        state.insert_action_group("tiles", Some(&actions));
     }
 }
