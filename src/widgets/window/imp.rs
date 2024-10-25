@@ -2,10 +2,13 @@ use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
+use glib::clone;
+use glib::signal::Propagation;
 use glib::subclass::InitializingObject;
 use glib::subclass::Signal;
 use glib::ByteArray;
 use glib::Properties;
+use gtk::gio::{ActionEntry, SimpleActionGroup};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{glib, CompositeTemplate};
@@ -41,6 +44,8 @@ pub struct Window {
 
     // palette picker properties
     pub(super) palette_data: RefCell<Palette>,
+    #[property(get, set)]
+    palette_dirty: Cell<bool>,
     #[property(get, set)]
     palette_sel_idx: Cell<u8>,
     #[property(get, set, nullable)]
@@ -109,6 +114,27 @@ impl ObjectImpl for Window {
 
         self.tilemap_editor.handle_action(&obj);
         self.tilemap_editor.render_widget(&obj);
+
+        // save changes before closing
+        obj.connect_close_request(|win| {
+            if win.palette_dirty() {
+                win.imp().palette_picker.save_changes(win);
+                return Propagation::Stop;
+            }
+            println!("quit program");
+            Propagation::Proceed
+        });
+
+        // debug stuff
+        let action_debug = ActionEntry::builder("printstuff")
+            .activate(clone!(@weak obj as this => move |_, _, _| {
+                println!("debug");
+                println!("palette dirty: {}", this.palette_dirty());
+            }))
+            .build();
+        let actions = SimpleActionGroup::new();
+        actions.add_action_entries([action_debug]);
+        self.obj().insert_action_group("debug", Some(&actions));
     }
 
     fn signals() -> &'static [Signal] {

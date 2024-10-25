@@ -310,7 +310,7 @@ impl TilemapEditor {
 
         let action_save_as = ActionEntry::builder("saveas")
             .activate(clone!(@weak self as this, @weak state => move |_, _, _| {
-                file_save_dialog(state.clone(), move |_, filepath| {
+                file_save_dialog(&state.clone(), move |_, filepath| {
                     println!("save tilemap: {filepath:?}");
                     match File::create(filepath.clone()) {
                         Ok(f) => {
