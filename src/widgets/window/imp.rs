@@ -21,7 +21,9 @@ use crate::data::{
     tiles::Tileset,
 };
 use crate::widgets::{
-    color_picker::ColorPicker, palette_picker::PalettePicker, tile_picker::TilePicker,
+    color_picker::ColorPicker,
+    palette_picker::{utils::unsaved_palette_dialog, PalettePicker},
+    tile_picker::TilePicker,
     tilemap_editor::TilemapEditor,
 };
 
@@ -118,7 +120,7 @@ impl ObjectImpl for Window {
         // save changes before closing
         obj.connect_close_request(|win| {
             if win.palette_dirty() {
-                win.imp().palette_picker.save_changes(win);
+                unsaved_palette_dialog(win, clone!(@weak win => move || win.close()));
                 return Propagation::Stop;
             }
             println!("quit program");

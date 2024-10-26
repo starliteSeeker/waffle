@@ -79,6 +79,7 @@ pub fn save_changes_dialog<W: IsA<Window>>(
         ButtonsType::None,
         message,
     );
+    dialog.set_title(Some("Unsaved changes"));
     dialog.add_buttons(&[
         ("Cancel", ResponseType::Cancel),
         ("Discard", ResponseType::No),
