@@ -299,6 +299,26 @@ impl TilemapEditor {
             }))
             .build();
 
+        let action_reload = ActionEntry::builder("reload")
+            .activate(clone!(@weak state => move |_, _, _| {
+                if !state.tilemap_dirty() {
+                    println!("No changes made to tilemap");
+                    return;
+                }
+
+                let Some(file) = state.tilemap_file() else {
+                    eprintln!("No tilemap file currently open");
+                    return;
+                };
+
+                unsaved_tilemap_dialog(&state, clone!(@weak state => move || {
+                    if let Err(e) = open_file(&state, file.clone()) {
+                        eprintln!("Error: {e}");
+                    }
+                }));
+            }))
+            .build();
+
         let action_save = ActionEntry::builder("save")
             .activate(clone!(@weak self as this, @weak state => move |_, _, _| {
                 let Some(filepath) = state.tilemap_file() else {return};
@@ -315,9 +335,15 @@ impl TilemapEditor {
             .build();
 
         let actions = SimpleActionGroup::new();
-        actions.add_action_entries([action_open, action_save, action_save_as]);
+        actions.add_action_entries([action_open, action_reload, action_save, action_save_as]);
 
         // bind file to action
+        let reload = actions.lookup_action("reload").unwrap();
+        state
+            .bind_property("tilemap_file", &reload, "enabled")
+            .transform_to(|_, file: Option<PathBuf>| Some(file.is_some()))
+            .sync_create()
+            .build();
         let save = actions.lookup_action("save").unwrap();
         state
             .bind_property("tilemap_file", &save, "enabled")

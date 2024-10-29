@@ -80,6 +80,10 @@
         <attribute name="label">Save as</attribute>
         <attribute name="action">tilemap.saveas</attribute>
       </item>
+      <item>
+        <attribute name="label">Reload</attribute>
+        <attribute name="action">tilemap.reload</attribute>
+      </item>
     </submenu>
   </menu>
 </interface>
