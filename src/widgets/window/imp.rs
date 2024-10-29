@@ -24,7 +24,7 @@ use crate::widgets::{
     color_picker::ColorPicker,
     palette_picker::{utils::unsaved_palette_dialog, PalettePicker},
     tile_picker::TilePicker,
-    tilemap_editor::TilemapEditor,
+    tilemap_editor::{utils::unsaved_tilemap_dialog, TilemapEditor},
 };
 
 #[derive(CompositeTemplate, Properties, Default)]
@@ -62,6 +62,8 @@ pub struct Window {
 
     // tilemap editor properties
     pub(super) tilemap_data: RefCell<Tilemap>,
+    #[property(get, set)]
+    tilemap_dirty: Cell<bool>,
     #[property(get, set, nullable)]
     tilemap_file: RefCell<Option<PathBuf>>,
 
@@ -121,6 +123,10 @@ impl ObjectImpl for Window {
         obj.connect_close_request(|win| {
             if win.palette_dirty() {
                 unsaved_palette_dialog(win, clone!(@weak win => move || win.close()));
+                return Propagation::Stop;
+            }
+            if win.tilemap_dirty() {
+                unsaved_tilemap_dialog(win, clone!(@weak win => move || win.close()));
                 return Propagation::Stop;
             }
             println!("quit program");
