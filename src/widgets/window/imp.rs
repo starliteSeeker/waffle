@@ -2,10 +2,13 @@ use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
+use glib::clone;
+use glib::signal::Propagation;
 use glib::subclass::InitializingObject;
 use glib::subclass::Signal;
 use glib::ByteArray;
 use glib::Properties;
+use gtk::gio::{ActionEntry, SimpleActionGroup};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{glib, CompositeTemplate};
@@ -18,8 +21,10 @@ use crate::data::{
     tiles::Tileset,
 };
 use crate::widgets::{
-    color_picker::ColorPicker, palette_picker::PalettePicker, tile_picker::TilePicker,
-    tilemap_editor::TilemapEditor,
+    color_picker::ColorPicker,
+    palette_picker::{utils::unsaved_palette_dialog, PalettePicker},
+    tile_picker::TilePicker,
+    tilemap_editor::{utils::unsaved_tilemap_dialog, TilemapEditor},
 };
 
 #[derive(CompositeTemplate, Properties, Default)]
@@ -42,6 +47,8 @@ pub struct Window {
     // palette picker properties
     pub(super) palette_data: RefCell<Palette>,
     #[property(get, set)]
+    palette_dirty: Cell<bool>,
+    #[property(get, set)]
     palette_sel_idx: Cell<u8>,
     #[property(get, set, nullable)]
     palette_file: RefCell<Option<PathBuf>>,
@@ -55,6 +62,8 @@ pub struct Window {
 
     // tilemap editor properties
     pub(super) tilemap_data: RefCell<Tilemap>,
+    #[property(get, set)]
+    tilemap_dirty: Cell<bool>,
     #[property(get, set, nullable)]
     tilemap_file: RefCell<Option<PathBuf>>,
 
@@ -109,6 +118,31 @@ impl ObjectImpl for Window {
 
         self.tilemap_editor.handle_action(&obj);
         self.tilemap_editor.render_widget(&obj);
+
+        // save changes before closing
+        obj.connect_close_request(|win| {
+            if win.palette_dirty() {
+                unsaved_palette_dialog(win, clone!(@weak win => move || win.close()));
+                return Propagation::Stop;
+            }
+            if win.tilemap_dirty() {
+                unsaved_tilemap_dialog(win, clone!(@weak win => move || win.close()));
+                return Propagation::Stop;
+            }
+            println!("quit program");
+            Propagation::Proceed
+        });
+
+        // debug stuff
+        let action_debug = ActionEntry::builder("printstuff")
+            .activate(clone!(@weak obj as this => move |_, _, _| {
+                println!("debug");
+                println!("palette dirty: {}", this.palette_dirty());
+            }))
+            .build();
+        let actions = SimpleActionGroup::new();
+        actions.add_action_entries([action_debug]);
+        self.obj().insert_action_group("debug", Some(&actions));
     }
 
     fn signals() -> &'static [Signal] {

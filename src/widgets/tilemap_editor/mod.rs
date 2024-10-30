@@ -1,6 +1,6 @@
 mod imp;
+pub mod utils;
 
-use std::fs::File;
 use std::path::PathBuf;
 
 use strum::IntoEnumIterator;
@@ -12,12 +12,9 @@ use gtk::subclass::prelude::*;
 use gtk::GestureDrag;
 use gtk::{gio, glib};
 
-use crate::data::{
-    list_items::{BGModeTwo, Bpp, DrawMode, TileSize, Zoom},
-    tilemap::Tilemap,
-};
+use crate::data::list_items::{BGModeTwo, Bpp, DrawMode, TileSize, Zoom};
 use crate::utils::*;
-use crate::widgets::window::Window;
+use crate::widgets::{tilemap_editor::utils::*, window::Window};
 use crate::TILE_W;
 
 glib::wrapper! {
@@ -79,6 +76,12 @@ impl TilemapEditor {
     }
 
     pub fn render_widget(&self, state: &Window) {
+        state.connect_tilemap_data_notify(clone!(@weak state => move |_| {
+            if state.tilemap_dirty() != true {
+                state.set_tilemap_dirty(true);
+            }
+        }));
+
         self.connect_tilemap_zoom_notify(clone!(@weak self as this => move |_| {
             let imp = this.imp();
             let side_length = (TILE_W * 32.0 * this.tilemap_zoom().to_val()) as i32;
@@ -281,52 +284,66 @@ impl TilemapEditor {
         let action_open = ActionEntry::builder("open")
             .activate(clone!(@weak self as this, @weak state => move |_, _, _| {
                 file_open_dialog(state.clone(), move |path| {
-                    match Tilemap::from_file(&path) {
-                        Err(e) => {
-                            eprintln!("Error: {}", e);
-                        }
-                        Ok(t) => {
-                            println!("load tilemap: {path:?}");
-                            state.set_tilemap_data(t);
-                            state.set_tilemap_file(Some(path));
+                    if state.tilemap_dirty() {
+                        unsaved_tilemap_dialog(&state, clone!(@weak state => move || {
+                            if let Err(e) = open_file(&state, path.clone()) {
+                                eprintln!("Error: {e}");
+                            }
+                        }));
+                    } else {
+                        if let Err(e) = open_file(&state, path) {
+                            eprintln!("Error: {e}");
                         }
                     }
                 });
+            }))
+            .build();
+
+        let action_reload = ActionEntry::builder("reload")
+            .activate(clone!(@weak state => move |_, _, _| {
+                if !state.tilemap_dirty() {
+                    println!("No changes made to tilemap");
+                    return;
+                }
+
+                let Some(file) = state.tilemap_file() else {
+                    eprintln!("No tilemap file currently open");
+                    return;
+                };
+
+                unsaved_tilemap_dialog(&state, clone!(@weak state => move || {
+                    if let Err(e) = open_file(&state, file.clone()) {
+                        eprintln!("Error: {e}");
+                    }
+                }));
             }))
             .build();
 
         let action_save = ActionEntry::builder("save")
             .activate(clone!(@weak self as this, @weak state => move |_, _, _| {
                 let Some(filepath) = state.tilemap_file() else {return};
-                println!("save tilemap: {filepath:?}");
-                match File::create(filepath) {
-                    Ok(f) => {
-                        let _ = state.tilemap_data().write_to_file(&f);
-                    },
-                    Err(e) => eprintln!("Error saving file: {e}"),
-                }
+                save_file(&state, filepath);
             }))
             .build();
 
         let action_save_as = ActionEntry::builder("saveas")
             .activate(clone!(@weak self as this, @weak state => move |_, _, _| {
-                file_save_dialog(state.clone(), move |_, filepath| {
-                    println!("save tilemap: {filepath:?}");
-                    match File::create(filepath.clone()) {
-                        Ok(f) => {
-                            let _ = state.tilemap_data().write_to_file(&f);
-                            state.set_tilemap_file(Some(filepath));
-                        },
-                        Err(e) => eprintln!("Error saving file: {e}"),
-                    }
+                file_save_dialog(&state.clone(), move |_, filepath| {
+                    save_file(&state, filepath);
                 });
             }))
             .build();
 
         let actions = SimpleActionGroup::new();
-        actions.add_action_entries([action_open, action_save, action_save_as]);
+        actions.add_action_entries([action_open, action_reload, action_save, action_save_as]);
 
         // bind file to action
+        let reload = actions.lookup_action("reload").unwrap();
+        state
+            .bind_property("tilemap_file", &reload, "enabled")
+            .transform_to(|_, file: Option<PathBuf>| Some(file.is_some()))
+            .sync_create()
+            .build();
         let save = actions.lookup_action("save").unwrap();
         state
             .bind_property("tilemap_file", &save, "enabled")

@@ -1,7 +1,10 @@
 use std::path::PathBuf;
 
 use gtk::prelude::*;
-use gtk::{FileChooserAction, FileChooserDialog, FileFilter, ResponseType, Window};
+use gtk::{
+    ButtonsType, DialogFlags, FileChooserAction, FileChooserDialog, FileFilter, MessageDialog,
+    MessageType, ResponseType, Window,
+};
 
 pub fn file_open_dialog<W: IsA<Window>, F: Fn(PathBuf) + 'static>(parent: W, f: F) {
     let dialog = FileChooserDialog::new(
@@ -36,12 +39,12 @@ pub fn file_open_dialog<W: IsA<Window>, F: Fn(PathBuf) + 'static>(parent: W, f: 
 }
 
 pub fn file_save_dialog<W: IsA<Window>, F: Fn(FileChooserDialog, PathBuf) + 'static>(
-    parent: W,
+    parent: &W,
     f: F,
 ) {
     let dialog = FileChooserDialog::new(
         Some("Save File"),
-        Some(&parent),
+        Some(parent),
         FileChooserAction::Save,
         &[
             ("Cancel", ResponseType::Cancel),
@@ -55,6 +58,43 @@ pub fn file_save_dialog<W: IsA<Window>, F: Fn(FileChooserDialog, PathBuf) + 'sta
             let file = d.file().expect("Couldn't get file");
             let filename = file.path().expect("Couldn't get file path");
             f(d.clone(), filename);
+        }
+
+        d.close();
+    });
+
+    dialog.show();
+}
+
+pub fn save_changes_dialog<W: IsA<Window>>(
+    parent: &W,
+    message: impl gtk::glib::IntoGStr,
+    save_f: impl Fn() + 'static,
+    discard_f: impl Fn() + 'static,
+) {
+    let dialog = MessageDialog::new(
+        Some(parent),
+        DialogFlags::MODAL,
+        MessageType::Warning,
+        ButtonsType::None,
+        message,
+    );
+    dialog.set_title(Some("Unsaved changes"));
+    dialog.add_buttons(&[
+        ("Cancel", ResponseType::Cancel),
+        ("Discard", ResponseType::No),
+        ("Save", ResponseType::Yes),
+    ]);
+
+    dialog.connect_response(move |d: &MessageDialog, response: ResponseType| {
+        match response {
+            ResponseType::Yes => {
+                save_f();
+            }
+            ResponseType::No => {
+                discard_f();
+            }
+            _ => {}
         }
 
         d.close();

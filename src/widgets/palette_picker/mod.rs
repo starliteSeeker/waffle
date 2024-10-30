@@ -1,8 +1,8 @@
 mod imp;
+pub mod utils;
 
 use std::str::FromStr;
 
-use std::fs::File;
 use std::path::PathBuf;
 
 use gio::{ActionEntry, SimpleActionGroup};
@@ -11,6 +11,7 @@ use gtk::GestureClick;
 use gtk::{gio, glib};
 use gtk::{prelude::*, subclass::prelude::*};
 
+use self::utils::*;
 use crate::data::{file_format::PaletteFile, list_items::Bpp, palette::Palette};
 use crate::utils::*;
 use crate::widgets::window::Window;
@@ -44,6 +45,12 @@ impl PalettePicker {
     }
 
     pub fn render_widget(&self, state: &Window) {
+        state.connect_palette_data_notify(clone!(@weak state => move |_| {
+            if state.palette_dirty() != true {
+                state.set_palette_dirty(true);
+            }
+        }));
+
         state.connect_palette_sel_idx_notify(clone!(@weak self as this => move |state| {
             this.imp().palette_drawing.queue_draw();
             this.set_label(state.palette_sel_idx());
@@ -156,34 +163,26 @@ impl PalettePicker {
         let action_open = ActionEntry::builder("open")
             .parameter_type(Some(&String::static_variant_type()))
             .activate(
-                clone!(@weak self as this, @weak state => move |_, _, parameter| {
+                clone!(@weak state => move |_, _, parameter| {
                     // parse file format parameter
                     let Some(file_format) = parameter else {return};
                     let file_format = file_format.get::<String>().expect("parameter should have type String");
                     let file_format = PaletteFile::from_str(&file_format).expect("invalid file format");
                     file_open_dialog(
                         state.clone(),
-                        move |path| {
-                            let file_result = match file_format {
-                                PaletteFile::BGR555 => Palette::from_file_bgr555(&path),
-                                PaletteFile::RGB24 => Palette::from_file_rgb24(&path),
-                            };
-                            match file_result {
-                                Err(e) => {
-                                    eprintln!("Error: {}", e);
-                                }
-                                Ok(p) => {
-                                    println!("load palette: {path:?}");
-                                    state.set_palette_data(p);
-                                    // only store file name (and allow reloading)
-                                    // if the type is BGR555
-                                    if file_format == PaletteFile::default() {
-                                        state.set_palette_file(Some(path));
-                                    } else {
-                                        state.set_palette_file(None::<PathBuf>);
+                        move |filepath| {
+                            // check for unsaved data
+                            if state.palette_dirty() {
+                                unsaved_palette_dialog(&state, clone!(@weak state => move || {
+                                    if let Err(e) = open_file(&state, filepath.clone(), file_format) {
+                                        eprintln!("Error: {e}");
                                     }
+                                }))
+                            } else {
+                                if let Err(e) = open_file(&state, filepath.clone(), file_format) {
+                                    eprintln!("Error: {e}");
                                 }
-                            };
+                            }
                         },
                     );
                 })
@@ -191,65 +190,44 @@ impl PalettePicker {
             .build();
 
         let action_reload = ActionEntry::builder("reload")
-            .activate(clone!(@weak self as this, @weak state => move |_, _, _| {
+            .activate(clone!(@weak state => move |_, _, _| {
+                if !state.palette_dirty() {
+                    println!("No changes made to palette");
+                    return;
+                }
+
+                // safeguard, shouldn't happen
                 let Some(file) = state.palette_file() else {
                     eprintln!("No palette file currently open");
                     return;
                 };
 
-                match Palette::from_file_bgr555(&file) {
-                    Err(e) => {
-                        eprintln!("Error: {}", e);
+                unsaved_palette_dialog(&state, clone!(@weak state => move || {
+                    if let Err(e) = open_file(&state, file.clone(), PaletteFile::BGR555) {
+                        eprintln!("Error: {e}");
                     }
-                    Ok(p) => {
-                        println!("reload palette: {file:?}");
-                        state.set_palette_data(p);
-                    }
-                };
+                }));
             }))
             .build();
 
         let action_save = ActionEntry::builder("save")
-            .activate(clone!(@weak self as this, @weak state => move |_, _, _| {
+            .activate(clone!(@weak state => move |_, _, _| {
                 let Some(filepath) = state.palette_file() else {return};
-                match File::create(filepath.clone()) {
-                    Ok(f) => {
-                        let _ = state.palette_data().write_file_bgr555(&f);
-                        println!("save palette: {filepath:?}");
-                    },
-                    Err(e) => eprintln!("Error saving file: {e}"),
-                }
+                save_file(&state, filepath, PaletteFile::default());
             }))
             .build();
 
         let action_save_as = ActionEntry::builder("saveas")
             .parameter_type(Some(&String::static_variant_type()))
             .activate(
-                clone!(@weak self as this, @weak state => move |_, _, parameter| {
+                clone!(@weak state => move |_, _, parameter| {
                     // parse file format parameter
                     let Some(file_format) = parameter else {return};
                     let file_format = file_format.get::<String>().expect("parameter should have type String");
                     let file_format = PaletteFile::from_str(&file_format).expect("invalid file format");
 
-                    file_save_dialog(state.clone(), move |_, filepath| {
-                        match File::create(filepath.clone()) {
-                            Ok(f) => {
-                                match file_format {
-                                    PaletteFile::BGR555 => {
-                                        let _ = state.palette_data().write_file_bgr555(&f);
-                                    },
-                                    PaletteFile::RGB24 => {
-                                        let _ = state.palette_data().write_file_rgb24(&f);
-                                    },
-                                }
-                                println!("save palette: {filepath:?}");
-
-                                if file_format == PaletteFile::default() {
-                                    state.set_palette_file(Some(filepath));
-                                }
-                            },
-                            Err(e) => eprintln!("Error saving file: {e}"),
-                        }
+                    file_save_dialog(&state.clone(), move |_, filepath| {
+                        save_file(&state, filepath, file_format);
                     });
                 }),
             )
