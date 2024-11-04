@@ -1,4 +1,5 @@
 pub mod data;
+pub mod undo_stack;
 pub mod utils;
 pub mod widgets;
 
@@ -36,6 +37,7 @@ fn on_startup(app: &Application) {
     icon_theme.add_resource_path("/com/example/waffle/icons/48x48/status/");
 
     app.set_accels_for_action("debug.printstuff", &[&"<Ctrl>d"]);
+    app.set_accels_for_action("win.undo", &[&"<Ctrl>z"]);
 }
 
 fn build_ui(app: &Application) {

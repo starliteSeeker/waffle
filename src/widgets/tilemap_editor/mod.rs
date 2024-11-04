@@ -1,6 +1,8 @@
 mod imp;
+pub mod operation;
 pub mod utils;
 
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 use strum::IntoEnumIterator;
@@ -11,6 +13,8 @@ use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::GestureDrag;
 use gtk::{gio, glib};
+
+use self::operation::ChangeTilemapTile;
 
 use crate::data::list_items::{BGModeTwo, Bpp, DrawMode, TileSize, Zoom};
 use crate::utils::*;
@@ -137,16 +141,19 @@ impl TilemapEditor {
 
             // calculate tile index
             let Some(new_idx) = this.cursor_to_idx(x, y) else {return};
+            let idx = (new_idx % 32, new_idx / 32);
 
             if imp.pen_draw_btn.is_active() {
-                imp.curr_drag.replace(DrawMode::Pen);
-                state.put_tile(new_idx as usize, &imp.curr_tile.borrow());
+                let mut set = HashSet::new();
+                set.insert(idx);
+                imp.curr_drag.replace(DrawMode::Pen(set));
+                imp.tilemap_drawing.queue_draw();
             } else if imp.rect_fill_btn.is_active() {
-                let idx = (new_idx % 32, new_idx / 32);
                 imp.curr_drag.replace(DrawMode::RectFill {
                     start: idx,
                     end: idx,
                 });
+                imp.tilemap_drawing.queue_draw();
             } else {
                 eprintln!("draw mode not selected");
             }
@@ -162,8 +169,10 @@ impl TilemapEditor {
                 let new_idx_2d = (new_idx % 32, new_idx / 32);
 
                 match &mut *imp.curr_drag.borrow_mut() {
-                    DrawMode::Pen => {
-                        state.put_tile(new_idx, &imp.curr_tile.borrow());
+                    DrawMode::Pen(set) => {
+                        if set.insert(new_idx_2d) {
+                            imp.tilemap_drawing.queue_draw();
+                        }
                     },
                     DrawMode::RectFill { start: _, end } => {
                         if *end != new_idx_2d {
@@ -179,7 +188,28 @@ impl TilemapEditor {
         );
         drag_event.connect_drag_end(clone!(@weak self as this, @weak state => move |_, _, _| {
             let imp = this.imp();
+            let state = &state;
+
             match *imp.curr_drag.borrow() {
+                DrawMode::Pen(ref set) => {
+                    let new_tile = this.imp().curr_tile.borrow();
+                    state.modify_tilemap_data(move |tilemap| {
+                        let mut map = HashMap::new();
+                        for (x, y) in set {
+                            if tilemap.0[y * 32 + x] != *new_tile {
+                                map.insert((*x, *y), tilemap.0[y * 32 + x]);
+                                tilemap.0[y * 32 + x] = *new_tile;
+                            }
+                        }
+                        if !map.is_empty() {
+                            state.push_op(ChangeTilemapTile::new(map, *new_tile, state.tilemap_dirty()).into());
+                            return true;
+                        } else {
+                            return false;
+                        }
+
+                    });
+                }
                 DrawMode::RectFill {start, end} => {
                     let new_tile = this.imp().curr_tile.borrow();
                     state.modify_tilemap_data(move |tilemap| {
@@ -187,12 +217,22 @@ impl TilemapEditor {
                             (start.0.min(end.0), start.0.max(end.0)),
                             (start.1.min(end.1), start.1.max(end.1)),
                         );
+                        let mut map = HashMap::new();
                         for i in y_min..=y_max {
                             for j in x_min..=x_max {
-                                tilemap.0[i * 32 + j] = *new_tile;
+                                if tilemap.0[i * 32 + j] != *new_tile {
+                                    map.insert((j, i), tilemap.0[i * 32 + j]);
+                                    tilemap.0[i * 32 + j] = *new_tile;
+                                }
                             }
                         }
-                        return true;
+                        if !map.is_empty() {
+                            state.push_op(ChangeTilemapTile::new(map, *new_tile, state.tilemap_dirty()).into());
+                            return true;
+                        } else {
+                            // nothing changed
+                            return false;
+                        }
                     });
                 },
                 _ => {},

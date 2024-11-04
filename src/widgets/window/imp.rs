@@ -20,6 +20,7 @@ use crate::data::{
     tilemap::Tilemap,
     tiles::Tileset,
 };
+use crate::undo_stack::UndoStack;
 use crate::widgets::{
     color_picker::ColorPicker,
     palette_picker::{utils::unsaved_palette_dialog, PalettePicker},
@@ -73,6 +74,8 @@ pub struct Window {
     pub bg_mode: Cell<BGModeTwo>,
     #[property(get, set, builder(TileSize::default()))]
     pub tile_size: Cell<TileSize>,
+
+    pub undo_stack: RefCell<UndoStack>,
 }
 
 // The central trait for subclassing a GObject
@@ -106,6 +109,7 @@ impl ObjectImpl for Window {
 
         // initialize variables
         obj.set_picker_color(ByteArray::from(&Color::default().into_bytes()));
+        self.undo_stack.borrow_mut().init(obj.clone());
 
         self.color_picker.handle_action(&obj);
         self.color_picker.render_widget(&obj);
@@ -132,6 +136,13 @@ impl ObjectImpl for Window {
             println!("quit program");
             Propagation::Proceed
         });
+
+        let action_undo = ActionEntry::builder("undo")
+            .activate(clone!(@weak obj as this => move |_, _, _| {
+                this.undo();
+            }))
+            .build();
+        self.obj().add_action_entries([action_undo]);
 
         // debug stuff
         let action_debug = ActionEntry::builder("printstuff")
