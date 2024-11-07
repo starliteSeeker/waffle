@@ -22,6 +22,18 @@ impl UndoRedo for ChangeTilemapTile {
             state.set_tilemap_dirty(self.was_dirty);
         }
     }
+
+    fn redo(&self, state: &Window) {
+        state.modify_tilemap_data(|tilemap| {
+            for (x, y) in self.before.keys() {
+                tilemap.0[y * 32 + x] = self.after;
+            }
+            true
+        });
+        if !state.tilemap_dirty() {
+            state.set_tilemap_dirty(true);
+        }
+    }
 }
 
 impl ChangeTilemapTile {

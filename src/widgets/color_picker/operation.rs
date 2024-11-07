@@ -17,6 +17,14 @@ impl UndoRedo for ChangePaletteColor {
             state.set_palette_dirty(self.was_dirty);
         }
     }
+
+    fn redo(&self, state: &Window) {
+        state.set_palette_sel_idx(self.idx);
+        state.modify_picker_color(|_| self.after);
+        if !state.palette_dirty() {
+            state.set_palette_dirty(true);
+        }
+    }
 }
 
 impl ChangePaletteColor {

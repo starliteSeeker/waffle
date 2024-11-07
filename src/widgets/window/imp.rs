@@ -142,7 +142,12 @@ impl ObjectImpl for Window {
                 this.undo();
             }))
             .build();
-        self.obj().add_action_entries([action_undo]);
+        let action_redo = ActionEntry::builder("redo")
+            .activate(clone!(@weak obj as this => move |_, _, _| {
+                this.redo();
+            }))
+            .build();
+        self.obj().add_action_entries([action_undo, action_redo]);
 
         // debug stuff
         let action_debug = ActionEntry::builder("printstuff")

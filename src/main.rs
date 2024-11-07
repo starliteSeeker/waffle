@@ -38,6 +38,7 @@ fn on_startup(app: &Application) {
 
     app.set_accels_for_action("debug.printstuff", &[&"<Ctrl>d"]);
     app.set_accels_for_action("win.undo", &[&"<Ctrl>z"]);
+    app.set_accels_for_action("win.redo", &[&"<Ctrl>y", &"<Ctrl><Shift>z"]);
 }
 
 fn build_ui(app: &Application) {

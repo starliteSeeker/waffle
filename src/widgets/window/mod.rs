@@ -125,6 +125,9 @@ impl Window {
     pub fn undo(&self) {
         self.imp().undo_stack.borrow_mut().undo();
     }
+    pub fn redo(&self) {
+        self.imp().undo_stack.borrow_mut().redo();
+    }
 
     // helpful functions
     // idx of palette 0 color 0
