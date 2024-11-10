@@ -9,6 +9,17 @@
       </item>
     </submenu>
     <submenu>
+      <attribute name="label">Edit</attribute>
+      <item>
+        <attribute name="label">Undo</attribute>
+        <attribute name="action">win.undo</attribute>
+      </item>
+      <item>
+        <attribute name="label">Redo</attribute>
+        <attribute name="action">win.redo</attribute>
+      </item>
+    </submenu>
+    <submenu>
       <attribute name="label">Palette</attribute>
       <section>
         <item>
