@@ -186,20 +186,19 @@ impl PalettePicker {
 
         let action_reload = ActionEntry::builder("reload")
             .activate(clone!(@weak state => move |_, _, _| {
-                if !state.palette_dirty() {
-                    println!("No changes made to palette");
-                    return;
-                }
-
                 // safeguard, shouldn't happen
                 let Some(file) = state.palette_file() else {
                     eprintln!("No palette file currently open");
                     return;
                 };
 
-                unsaved_palette_dialog(&state, clone!(@weak state => move || {
+                if state.palette_dirty() {
+                    unsaved_palette_dialog(&state, clone!(@weak state => move || {
+                        open_file(&state, file.clone(), PaletteFile::BGR555);
+                    }));
+                } else {
                     open_file(&state, file.clone(), PaletteFile::BGR555);
-                }));
+                }
             }))
             .build();
 

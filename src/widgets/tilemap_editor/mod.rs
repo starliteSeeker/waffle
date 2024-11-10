@@ -331,19 +331,18 @@ impl TilemapEditor {
 
         let action_reload = ActionEntry::builder("reload")
             .activate(clone!(@weak state => move |_, _, _| {
-                if !state.tilemap_dirty() {
-                    println!("No changes made to tilemap");
-                    return;
-                }
-
                 let Some(file) = state.tilemap_file() else {
                     eprintln!("No tilemap file currently open");
                     return;
                 };
 
-                unsaved_tilemap_dialog(&state, clone!(@weak state => move || {
+                if state.tilemap_dirty() {
+                    unsaved_tilemap_dialog(&state, clone!(@weak state => move || {
+                        open_file(&state, file.clone());
+                    }));
+                } else {
                     open_file(&state, file.clone());
-                }));
+                }
             }))
             .build();
 
