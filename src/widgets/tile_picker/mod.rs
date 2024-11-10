@@ -182,6 +182,7 @@ impl TilePicker {
                                 state.set_tile_bpp(bpp);
                                 this.set_row_offset(0);
                                 state.set_tileset_file(Some(path));
+                                state.clear_history();
                             }
                         }
                     });
@@ -205,6 +206,7 @@ impl TilePicker {
                         state.set_tileset_data(t);
                         state.set_tileset_sel_idx(0);
                         this.set_row_offset(0);
+                        state.clear_history();
                     }
                 }
             }))

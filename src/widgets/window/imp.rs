@@ -48,8 +48,6 @@ pub struct Window {
     // palette picker properties
     pub(super) palette_data: RefCell<Palette>,
     #[property(get, set)]
-    palette_dirty: Cell<bool>,
-    #[property(get, set)]
     palette_sel_idx: Cell<u8>,
     #[property(get, set, nullable)]
     palette_file: RefCell<Option<PathBuf>>,
@@ -63,8 +61,6 @@ pub struct Window {
 
     // tilemap editor properties
     pub(super) tilemap_data: RefCell<Tilemap>,
-    #[property(get, set)]
-    tilemap_dirty: Cell<bool>,
     #[property(get, set, nullable)]
     tilemap_file: RefCell<Option<PathBuf>>,
 
@@ -152,8 +148,7 @@ impl ObjectImpl for Window {
         // debug stuff
         let action_debug = ActionEntry::builder("printstuff")
             .activate(clone!(@weak obj as this => move |_, _, _| {
-                println!("debug");
-                println!("palette dirty: {}", this.palette_dirty());
+                println!("palette dirty: {}, tilemap dirty: {}", this.palette_dirty(), this.tilemap_dirty());
             }))
             .build();
         let actions = SimpleActionGroup::new();

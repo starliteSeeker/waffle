@@ -7,7 +7,6 @@ use crate::widgets::window::Window;
 pub struct ChangeTilemapTile {
     before: HashMap<(usize, usize), Tile>,
     after: Tile,
-    was_dirty: bool,
 }
 
 impl UndoRedo for ChangeTilemapTile {
@@ -18,9 +17,6 @@ impl UndoRedo for ChangeTilemapTile {
             }
             true
         });
-        if state.tilemap_dirty() != self.was_dirty {
-            state.set_tilemap_dirty(self.was_dirty);
-        }
     }
 
     fn redo(&self, state: &Window) {
@@ -30,18 +26,11 @@ impl UndoRedo for ChangeTilemapTile {
             }
             true
         });
-        if !state.tilemap_dirty() {
-            state.set_tilemap_dirty(true);
-        }
     }
 }
 
 impl ChangeTilemapTile {
-    pub fn new(before: HashMap<(usize, usize), Tile>, after: Tile, was_dirty: bool) -> Self {
-        Self {
-            before,
-            after,
-            was_dirty,
-        }
+    pub fn new(before: HashMap<(usize, usize), Tile>, after: Tile) -> Self {
+        Self { before, after }
     }
 }

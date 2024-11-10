@@ -30,7 +30,7 @@ impl ColorPicker {
                 if val != old_color.red() {
                     // value changed, update undo queue
                     let new_color = old_color.with_red(val);
-                    state.push_op(ChangePaletteColor::new(state.palette_sel_idx(), old_color, new_color, state.palette_dirty()).into());
+                    state.push_op(ChangePaletteColor::new(state.palette_sel_idx(), old_color, new_color).into());
                     return Propagation::Proceed;
                 }
                 // value not changed, block propogation
@@ -51,7 +51,7 @@ impl ColorPicker {
                 if val != old_color.green() {
                     // value changed, update undo queue
                     let new_color = old_color.with_green(val);
-                    state.push_op(ChangePaletteColor::new(state.palette_sel_idx(), old_color, new_color, state.palette_dirty()).into());
+                    state.push_op(ChangePaletteColor::new(state.palette_sel_idx(), old_color, new_color).into());
                     return Propagation::Proceed;
                 }
                 // value not changed, block propogation
@@ -72,7 +72,7 @@ impl ColorPicker {
                 if val != old_color.blue() {
                     // value changed, update undo queue
                     let new_color = old_color.with_blue(val);
-                    state.push_op(ChangePaletteColor::new(state.palette_sel_idx(), old_color, new_color, state.palette_dirty()).into());
+                    state.push_op(ChangePaletteColor::new(state.palette_sel_idx(), old_color, new_color).into());
                     return Propagation::Proceed;
                 }
                 // value not changed, block propogation

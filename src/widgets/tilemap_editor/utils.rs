@@ -7,13 +7,17 @@ use crate::data::tilemap::Tilemap;
 use crate::utils::*;
 use crate::widgets::window::Window;
 
-pub fn open_file(state: &Window, filepath: PathBuf) -> std::io::Result<()> {
-    Tilemap::from_file(&filepath).map(|res| {
-        println!("load tilemap: {filepath:?}");
-        state.set_tilemap_data(res);
-        state.set_tilemap_file(Some(filepath));
-        state.set_tilemap_dirty(false);
-    })
+pub fn open_file(state: &Window, filepath: PathBuf) {
+    match Tilemap::from_file(&filepath) {
+        Ok(res) => {
+            println!("load tilemap: {filepath:?}");
+            state.set_tilemap_data(res);
+            state.set_tilemap_file(Some(filepath));
+            state.mark_tilemap_clean();
+            state.clear_history();
+        }
+        Err(e) => eprintln!("Error: {e}"),
+    }
 }
 
 pub fn save_file(state: &Window, filepath: PathBuf) {
@@ -22,7 +26,7 @@ pub fn save_file(state: &Window, filepath: PathBuf) {
             let _ = state.tilemap_data().write_to_file(&f);
             println!("save tilemap: {filepath:?}");
             state.set_tilemap_file(Some(filepath));
-            state.set_tilemap_dirty(false);
+            state.mark_tilemap_clean();
         }
         Err(e) => eprintln!("Error saving file: {e}"),
     }
@@ -55,7 +59,7 @@ pub fn unsaved_tilemap_dialog(state: &Window, after: impl Fn() + Clone + 'static
         }),
         clone!(@weak state => move || {
             println!("discard unsaved tilemap");
-            state.set_tilemap_dirty(false);
+            state.mark_tilemap_clean();
             after2();
         }),
     );

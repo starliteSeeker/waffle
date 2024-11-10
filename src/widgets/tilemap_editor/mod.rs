@@ -80,12 +80,6 @@ impl TilemapEditor {
     }
 
     pub fn render_widget(&self, state: &Window) {
-        state.connect_tilemap_data_notify(clone!(@weak state => move |_| {
-            if state.tilemap_dirty() != true {
-                state.set_tilemap_dirty(true);
-            }
-        }));
-
         self.connect_tilemap_zoom_notify(clone!(@weak self as this => move |_| {
             let imp = this.imp();
             let side_length = (TILE_W * 32.0 * this.tilemap_zoom().to_val()) as i32;
@@ -202,7 +196,7 @@ impl TilemapEditor {
                             }
                         }
                         if !map.is_empty() {
-                            state.push_op(ChangeTilemapTile::new(map, *new_tile, state.tilemap_dirty()).into());
+                            state.push_op(ChangeTilemapTile::new(map, *new_tile).into());
                             return true;
                         } else {
                             return false;
@@ -227,7 +221,7 @@ impl TilemapEditor {
                             }
                         }
                         if !map.is_empty() {
-                            state.push_op(ChangeTilemapTile::new(map, *new_tile, state.tilemap_dirty()).into());
+                            state.push_op(ChangeTilemapTile::new(map, *new_tile).into());
                             return true;
                         } else {
                             // nothing changed
@@ -326,14 +320,10 @@ impl TilemapEditor {
                 file_open_dialog(state.clone(), move |path| {
                     if state.tilemap_dirty() {
                         unsaved_tilemap_dialog(&state, clone!(@weak state => move || {
-                            if let Err(e) = open_file(&state, path.clone()) {
-                                eprintln!("Error: {e}");
-                            }
+                            open_file(&state, path.clone());
                         }));
                     } else {
-                        if let Err(e) = open_file(&state, path) {
-                            eprintln!("Error: {e}");
-                        }
+                        open_file(&state, path);
                     }
                 });
             }))
@@ -352,9 +342,7 @@ impl TilemapEditor {
                 };
 
                 unsaved_tilemap_dialog(&state, clone!(@weak state => move || {
-                    if let Err(e) = open_file(&state, file.clone()) {
-                        eprintln!("Error: {e}");
-                    }
+                    open_file(&state, file.clone());
                 }));
             }))
             .build();

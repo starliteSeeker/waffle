@@ -45,12 +45,6 @@ impl PalettePicker {
     }
 
     pub fn render_widget(&self, state: &Window) {
-        state.connect_palette_data_notify(clone!(@weak state => move |_| {
-            if state.palette_dirty() != true {
-                state.set_palette_dirty(true);
-            }
-        }));
-
         state.connect_palette_sel_idx_notify(clone!(@weak self as this => move |state| {
             this.imp().palette_drawing.queue_draw();
             this.set_label(state.palette_sel_idx());
@@ -174,14 +168,10 @@ impl PalettePicker {
                             // check for unsaved data
                             if state.palette_dirty() {
                                 unsaved_palette_dialog(&state, clone!(@weak state => move || {
-                                    if let Err(e) = open_file(&state, filepath.clone(), file_format) {
-                                        eprintln!("Error: {e}");
-                                    }
+                                    open_file(&state, filepath.clone(), file_format);
                                 }))
                             } else {
-                                if let Err(e) = open_file(&state, filepath.clone(), file_format) {
-                                    eprintln!("Error: {e}");
-                                }
+                                open_file(&state, filepath.clone(), file_format);
                             }
                         },
                     );
@@ -203,9 +193,7 @@ impl PalettePicker {
                 };
 
                 unsaved_palette_dialog(&state, clone!(@weak state => move || {
-                    if let Err(e) = open_file(&state, file.clone(), PaletteFile::BGR555) {
-                        eprintln!("Error: {e}");
-                    }
+                    open_file(&state, file.clone(), PaletteFile::BGR555);
                 }));
             }))
             .build();
