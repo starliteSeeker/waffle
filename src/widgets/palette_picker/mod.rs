@@ -30,8 +30,13 @@ impl PalettePicker {
         let gesture = GestureClick::new();
         gesture.connect_released(
             clone!(@weak self as this , @weak state => move |_, _, x, y| {
+                let palette_scroll = &this.imp().palette_scroll;
+                if x < 0.0 || x >= palette_scroll.width().into() || y < 0.0 || y >= palette_scroll.height().into() {
+                    // coordinate out of range
+                    return;
+                }
                 // account for y scroll when calculating correct idx
-                let yy = y + this.imp().palette_scroll.vadjustment().value();
+                let yy = y + palette_scroll.vadjustment().value();
                 let new_idx = (yy / TILE_W) as u8 * 16 + (x / TILE_W) as u8;
                 if new_idx != state.palette_sel_idx() {
                     state.set_palette_sel_idx(new_idx);
