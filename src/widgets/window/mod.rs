@@ -13,6 +13,7 @@ use crate::data::{
     tilemap::{Tile, Tilemap},
     tiles::Tileset,
 };
+use crate::undo_stack::Operation;
 
 glib::wrapper! {
     pub struct Window(ObjectSubclass<imp::Window>)
@@ -116,6 +117,33 @@ impl Window {
         if curr_color != new_color {
             self.set_picker_color(ByteArray::from(&new_color.into_bytes()));
         }
+    }
+
+    // undo stack
+    pub fn push_op(&self, op: Operation) {
+        self.imp().undo_stack.borrow_mut().push(op);
+    }
+    pub fn undo(&self) {
+        self.imp().undo_stack.borrow_mut().undo();
+    }
+    pub fn redo(&self) {
+        self.imp().undo_stack.borrow_mut().redo();
+    }
+    pub fn clear_history(&self) {
+        println!("reset undo");
+        self.imp().undo_stack.borrow_mut().clear();
+    }
+    pub fn palette_dirty(&self) -> bool {
+        self.imp().undo_stack.borrow().palette_dirty()
+    }
+    pub fn mark_palette_clean(&self) {
+        self.imp().undo_stack.borrow_mut().mark_palette_clean()
+    }
+    pub fn tilemap_dirty(&self) -> bool {
+        self.imp().undo_stack.borrow().tilemap_dirty()
+    }
+    pub fn mark_tilemap_clean(&self) {
+        self.imp().undo_stack.borrow_mut().mark_tilemap_clean()
     }
 
     // helpful functions

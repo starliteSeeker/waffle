@@ -7,27 +7,27 @@ use crate::data::{file_format::PaletteFile, palette::Palette};
 use crate::utils::*;
 use crate::widgets::window::Window;
 
-pub fn open_file(
-    state: &Window,
-    filepath: PathBuf,
-    file_format: PaletteFile,
-) -> std::io::Result<()> {
+pub fn open_file(state: &Window, filepath: PathBuf, file_format: PaletteFile) {
     let file_result = match file_format {
         PaletteFile::BGR555 => Palette::from_file_bgr555(&filepath),
         PaletteFile::RGB24 => Palette::from_file_rgb24(&filepath),
     };
-    file_result.map(|res| {
-        println!("load palette: {filepath:?}");
-        state.set_palette_data(res);
-        // only store file name (and allow reloading)
-        // if the type is BGR555
-        if file_format == PaletteFile::default() {
-            state.set_palette_file(Some(filepath));
-        } else {
-            state.set_palette_file(None::<PathBuf>);
+    match file_result {
+        Ok(res) => {
+            println!("load palette: {filepath:?}");
+            state.set_palette_data(res);
+            // only store file name (and allow reloading)
+            // if the type is BGR555
+            if file_format == PaletteFile::default() {
+                state.set_palette_file(Some(filepath));
+            } else {
+                state.set_palette_file(None::<PathBuf>);
+            }
+            state.mark_palette_clean();
+            state.clear_history();
         }
-        state.set_palette_dirty(false);
-    })
+        Err(e) => eprintln!("Error: {e}"),
+    }
 }
 
 pub fn save_file(state: &Window, filepath: PathBuf, file_format: PaletteFile) {
@@ -45,7 +45,7 @@ pub fn save_file(state: &Window, filepath: PathBuf, file_format: PaletteFile) {
 
             if file_format == PaletteFile::default() {
                 state.set_palette_file(Some(filepath));
-                state.set_palette_dirty(false);
+                state.mark_palette_clean();
             }
         }
         Err(e) => eprintln!("Error saving file: {e}"),
@@ -79,7 +79,7 @@ pub fn unsaved_palette_dialog(state: &Window, after: impl Fn() + Clone + 'static
         }),
         clone!(@weak state => move || {
             println!("discard unsaved palette");
-            state.set_palette_dirty(false);
+            state.mark_palette_clean();
             after2();
         }),
     );

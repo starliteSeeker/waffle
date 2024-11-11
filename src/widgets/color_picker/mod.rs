@@ -1,11 +1,14 @@
 mod imp;
+pub mod operation;
 
-use gtk::glib::{self, clone};
+use gtk::glib::{self, clone, signal::Propagation};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 
 use crate::data::palette::Palette;
 use crate::widgets::window::Window;
+
+use self::operation::ChangePaletteColor;
 
 glib::wrapper! {
     pub struct ColorPicker(ObjectSubclass<imp::ColorPicker>)
@@ -16,20 +19,66 @@ glib::wrapper! {
 
 impl ColorPicker {
     pub fn handle_action(&self, state: &Window) {
-        // rgb sliders
         let imp = self.imp();
+
+        // undo triggers connect_value_changed, so pushing onto undo_stak can't be in the same
+        // place
+        imp.red_slider.connect_change_value(
+            clone!(@weak state => @default-return (false.into()), move |_, _, val| {
+                let val = (val.round() as u8).clamp(0, 31);
+                let old_color = state.picker_color_inner();
+                if val != old_color.red() {
+                    // value changed, update undo queue
+                    let new_color = old_color.with_red(val);
+                    state.push_op(ChangePaletteColor::new(state.palette_sel_idx(), old_color, new_color).into());
+                    return Propagation::Proceed;
+                }
+                // value not changed, block propogation
+                return Propagation::Stop;
+            }),
+        );
         imp.red_slider
             .connect_value_changed(clone!(@weak state => move |this| {
                 // change red value of picker color
                 let val = this.adjustment().value();
                 state.modify_picker_color(|c| c.with_red(val.round() as u8));
             }));
+
+        imp.green_slider.connect_change_value(
+            clone!(@weak state => @default-return (false.into()), move |_, _, val| {
+                let val = (val.round() as u8).clamp(0, 31);
+                let old_color = state.picker_color_inner();
+                if val != old_color.green() {
+                    // value changed, update undo queue
+                    let new_color = old_color.with_green(val);
+                    state.push_op(ChangePaletteColor::new(state.palette_sel_idx(), old_color, new_color).into());
+                    return Propagation::Proceed;
+                }
+                // value not changed, block propogation
+                return Propagation::Stop;
+            }),
+        );
         imp.green_slider
             .connect_value_changed(clone!(@weak state => move |this| {
                 // change green value of picker color
                 let val = this.adjustment().value();
                 state.modify_picker_color(|c| c.with_green(val.round() as u8));
             }));
+
+        imp.blue_slider.connect_change_value(
+            clone!(@weak state => @default-return (false.into()), move |_, _, val| {
+                let val = (val.round() as u8).clamp(0, 31);
+                let old_color = state.picker_color_inner();
+                if val != old_color.blue() {
+                    // value changed, update undo queue
+                    let new_color = old_color.with_blue(val);
+                    state.push_op(ChangePaletteColor::new(state.palette_sel_idx(), old_color, new_color).into());
+                    return Propagation::Proceed;
+                }
+                // value not changed, block propogation
+                return Propagation::Stop;
+            }),
+        );
         imp.blue_slider
             .connect_value_changed(clone!(@weak state => move |this| {
                 // change blue value of picker color

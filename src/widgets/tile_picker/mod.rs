@@ -33,6 +33,11 @@ impl TilePicker {
         // mouse click on tileset drawing
         let gesture = GestureClick::new();
         gesture.connect_released(clone!(@weak self as this, @weak state => move |_, _, x, y| {
+            let tile_drawing = &this.imp().tile_drawing;
+            if x < 0.0 || x >= tile_drawing.width().into() || y < 0.0 || y >= tile_drawing.height().into() {
+                // coordinate out of range
+                return;
+            }
             // account for row offset when calculating correct idx
             let new_idx = (this.row_offset() as f64 + y / TILE_W) as u32 * 16 + (x / TILE_W) as u32;
             if new_idx != state.tileset_sel_idx() {
@@ -182,6 +187,7 @@ impl TilePicker {
                                 state.set_tile_bpp(bpp);
                                 this.set_row_offset(0);
                                 state.set_tileset_file(Some(path));
+                                state.clear_history();
                             }
                         }
                     });
@@ -205,6 +211,7 @@ impl TilePicker {
                         state.set_tileset_data(t);
                         state.set_tileset_sel_idx(0);
                         this.set_row_offset(0);
+                        state.clear_history();
                     }
                 }
             }))

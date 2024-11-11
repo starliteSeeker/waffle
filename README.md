@@ -140,7 +140,6 @@ In the 2bpp format, only a 32-color subset can be used, with the palette index f
 
 Not much. If I ever feel like it, some important/quality-of-life features to add include:
 
-- undo/redo
 - select mode on tilemap
 - different import/export file formats
 - layout resposive to window resize

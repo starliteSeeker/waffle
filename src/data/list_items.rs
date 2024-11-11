@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::fmt;
 
 use strum::{EnumIter, EnumString};
@@ -115,11 +116,11 @@ impl BGModeTwo {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone)]
 pub enum DrawMode {
     #[default]
     None,
-    Pen,
+    Pen(HashSet<(usize, usize)>),
     RectFill {
         start: (usize, usize),
         end: (usize, usize),
@@ -136,7 +137,7 @@ impl DrawMode {
                 );
                 ix >= x_min && ix <= x_max && iy >= y_min && iy <= y_max
             }
-            DrawMode::Pen => false,
+            DrawMode::Pen(set) => set.contains(&(ix, iy)),
             DrawMode::None => false,
         }
     }

@@ -30,8 +30,13 @@ impl PalettePicker {
         let gesture = GestureClick::new();
         gesture.connect_released(
             clone!(@weak self as this , @weak state => move |_, _, x, y| {
+                let palette_scroll = &this.imp().palette_scroll;
+                if x < 0.0 || x >= palette_scroll.width().into() || y < 0.0 || y >= palette_scroll.height().into() {
+                    // coordinate out of range
+                    return;
+                }
                 // account for y scroll when calculating correct idx
-                let yy = y + this.imp().palette_scroll.vadjustment().value();
+                let yy = y + palette_scroll.vadjustment().value();
                 let new_idx = (yy / TILE_W) as u8 * 16 + (x / TILE_W) as u8;
                 if new_idx != state.palette_sel_idx() {
                     state.set_palette_sel_idx(new_idx);
@@ -45,12 +50,6 @@ impl PalettePicker {
     }
 
     pub fn render_widget(&self, state: &Window) {
-        state.connect_palette_data_notify(clone!(@weak state => move |_| {
-            if state.palette_dirty() != true {
-                state.set_palette_dirty(true);
-            }
-        }));
-
         state.connect_palette_sel_idx_notify(clone!(@weak self as this => move |state| {
             this.imp().palette_drawing.queue_draw();
             this.set_label(state.palette_sel_idx());
@@ -174,14 +173,10 @@ impl PalettePicker {
                             // check for unsaved data
                             if state.palette_dirty() {
                                 unsaved_palette_dialog(&state, clone!(@weak state => move || {
-                                    if let Err(e) = open_file(&state, filepath.clone(), file_format) {
-                                        eprintln!("Error: {e}");
-                                    }
+                                    open_file(&state, filepath.clone(), file_format);
                                 }))
                             } else {
-                                if let Err(e) = open_file(&state, filepath.clone(), file_format) {
-                                    eprintln!("Error: {e}");
-                                }
+                                open_file(&state, filepath.clone(), file_format);
                             }
                         },
                     );
@@ -191,22 +186,19 @@ impl PalettePicker {
 
         let action_reload = ActionEntry::builder("reload")
             .activate(clone!(@weak state => move |_, _, _| {
-                if !state.palette_dirty() {
-                    println!("No changes made to palette");
-                    return;
-                }
-
                 // safeguard, shouldn't happen
                 let Some(file) = state.palette_file() else {
                     eprintln!("No palette file currently open");
                     return;
                 };
 
-                unsaved_palette_dialog(&state, clone!(@weak state => move || {
-                    if let Err(e) = open_file(&state, file.clone(), PaletteFile::BGR555) {
-                        eprintln!("Error: {e}");
-                    }
-                }));
+                if state.palette_dirty() {
+                    unsaved_palette_dialog(&state, clone!(@weak state => move || {
+                        open_file(&state, file.clone(), PaletteFile::BGR555);
+                    }));
+                } else {
+                    open_file(&state, file.clone(), PaletteFile::BGR555);
+                }
             }))
             .build();
 
