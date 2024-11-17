@@ -28,10 +28,18 @@ impl PalettePicker {
     pub fn handle_action(&self, state: &Window) {
         // mouse click on palette
         let gesture = GestureClick::new();
-        gesture.connect_released(
-            clone!(@weak self as this , @weak state => move |_, _, x, y| {
+        gesture.connect_released(clone!(
+            #[weak(rename_to = this)]
+            self,
+            #[weak]
+            state,
+            move |_, _, x, y| {
                 let palette_scroll = &this.imp().palette_scroll;
-                if x < 0.0 || x >= palette_scroll.width().into() || y < 0.0 || y >= palette_scroll.height().into() {
+                if x < 0.0
+                    || x >= palette_scroll.width().into()
+                    || y < 0.0
+                    || y >= palette_scroll.height().into()
+                {
                     // coordinate out of range
                     return;
                 }
@@ -41,8 +49,8 @@ impl PalettePicker {
                 if new_idx != state.palette_sel_idx() {
                     state.set_palette_sel_idx(new_idx);
                 }
-            }),
-        );
+            }
+        ));
         self.imp().palette_scroll.add_controller(gesture);
 
         // open/save files
@@ -50,22 +58,38 @@ impl PalettePicker {
     }
 
     pub fn render_widget(&self, state: &Window) {
-        state.connect_palette_sel_idx_notify(clone!(@weak self as this => move |state| {
-            this.imp().palette_drawing.queue_draw();
-            this.set_label(state.palette_sel_idx());
-        }));
+        state.connect_palette_sel_idx_notify(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |state| {
+                this.imp().palette_drawing.queue_draw();
+                this.set_label(state.palette_sel_idx());
+            }
+        ));
 
-        state.connect_palette_data_notify(clone!(@weak self as this => move |_| {
-            this.imp().palette_drawing.queue_draw();
-        }));
+        state.connect_palette_data_notify(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |_| {
+                this.imp().palette_drawing.queue_draw();
+            }
+        ));
 
-        state.connect_tile_bpp_notify(clone!(@weak self as this => move |_| {
-            this.imp().palette_drawing.queue_draw();
-        }));
+        state.connect_tile_bpp_notify(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |_| {
+                this.imp().palette_drawing.queue_draw();
+            }
+        ));
 
-        state.connect_bg_mode_notify(clone!(@weak self as this => move |_| {
-            this.imp().palette_drawing.queue_draw();
-        }));
+        state.connect_bg_mode_notify(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |_| {
+                this.imp().palette_drawing.queue_draw();
+            }
+        ));
 
         state.connect_picker_color_notify(move |state| {
             let idx = state.palette_sel_idx() as usize;
@@ -80,9 +104,10 @@ impl PalettePicker {
             })
         });
 
-        self.imp()
-            .palette_drawing
-            .set_draw_func(clone!(@weak state => move |_, cr, x, y| {
+        self.imp().palette_drawing.set_draw_func(clone!(
+            #[weak]
+            state,
+            move |_, cr, x, y| {
                 let Palette(palette_data) = *state.palette_data();
                 let sel_idx = state.palette_sel_idx();
                 let tile_bpp = state.tile_bpp();
@@ -108,7 +133,13 @@ impl PalettePicker {
                             Bpp::Four => j == 0,
                         };
                         if is_transparent {
-                            cr.arc(x_offset + TILE_W / 2.0, y_offset + TILE_W / 2.0, 3.0, 0.0 , 2.0 * std::f64::consts::PI);
+                            cr.arc(
+                                x_offset + TILE_W / 2.0,
+                                y_offset + TILE_W / 2.0,
+                                3.0,
+                                0.0,
+                                2.0 * std::f64::consts::PI,
+                            );
                             cr.set_source_rgb(0.8, 0.8, 0.8);
                             let _ = cr.fill_preserve();
                             cr.set_source_rgb(0.0, 0.0, 0.0);
@@ -134,7 +165,12 @@ impl PalettePicker {
                 let pal_start_idx = sel_idx - (sel_idx % tile_bpp.to_val());
                 let x_offset = (pal_start_idx % 16) as f64 * TILE_W;
                 let y_offset = (pal_start_idx / 16) as f64 * TILE_W;
-                cr.rectangle(x_offset, y_offset, TILE_W * tile_bpp.to_val() as f64, TILE_W);
+                cr.rectangle(
+                    x_offset,
+                    y_offset,
+                    TILE_W * tile_bpp.to_val() as f64,
+                    TILE_W,
+                );
 
                 cr.clip_preserve();
                 cr.set_line_width(2.0);
@@ -149,7 +185,8 @@ impl PalettePicker {
                 cr.set_line_width(4.0);
                 cr.set_source_rgb(1.0, 1.0, 0.0);
                 let _ = cr.stroke();
-            }));
+            }
+        ));
     }
 
     fn set_label(&self, idx: u8) {
@@ -161,68 +198,99 @@ impl PalettePicker {
     fn file_actions(&self, state: &Window) {
         let action_open = ActionEntry::builder("open")
             .parameter_type(Some(&String::static_variant_type()))
-            .activate(
-                clone!(@weak state => move |_, _, parameter| {
+            .activate(clone!(
+                #[weak]
+                state,
+                move |_, _, parameter| {
                     // parse file format parameter
-                    let Some(file_format) = parameter else {return};
-                    let file_format = file_format.get::<String>().expect("parameter should have type String");
-                    let file_format = PaletteFile::from_str(&file_format).expect("invalid file format");
-                    file_open_dialog(
-                        state.clone(),
-                        move |filepath| {
-                            // check for unsaved data
-                            if state.palette_dirty() {
-                                unsaved_palette_dialog(&state, clone!(@weak state => move || {
-                                    open_file(&state, filepath.clone(), file_format);
-                                }))
-                            } else {
-                                open_file(&state, filepath.clone(), file_format);
-                            }
-                        },
-                    );
-                })
-            )
+                    let Some(file_format) = parameter else { return };
+                    let file_format = file_format
+                        .get::<String>()
+                        .expect("parameter should have type String");
+                    let file_format =
+                        PaletteFile::from_str(&file_format).expect("invalid file format");
+                    file_open_dialog(state.clone(), move |filepath| {
+                        // check for unsaved data
+                        if state.palette_dirty() {
+                            unsaved_palette_dialog(
+                                &state,
+                                clone!(
+                                    #[weak]
+                                    state,
+                                    move || {
+                                        open_file(&state, filepath.clone(), file_format);
+                                    }
+                                ),
+                            )
+                        } else {
+                            open_file(&state, filepath.clone(), file_format);
+                        }
+                    });
+                }
+            ))
             .build();
 
         let action_reload = ActionEntry::builder("reload")
-            .activate(clone!(@weak state => move |_, _, _| {
-                // safeguard, shouldn't happen
-                let Some(file) = state.palette_file() else {
-                    eprintln!("No palette file currently open");
-                    return;
-                };
+            .activate(clone!(
+                #[weak]
+                state,
+                move |_, _, _| {
+                    // safeguard, shouldn't happen
+                    let Some(file) = state.palette_file() else {
+                        eprintln!("No palette file currently open");
+                        return;
+                    };
 
-                if state.palette_dirty() {
-                    unsaved_palette_dialog(&state, clone!(@weak state => move || {
+                    if state.palette_dirty() {
+                        unsaved_palette_dialog(
+                            &state,
+                            clone!(
+                                #[weak]
+                                state,
+                                move || {
+                                    open_file(&state, file.clone(), PaletteFile::BGR555);
+                                }
+                            ),
+                        );
+                    } else {
                         open_file(&state, file.clone(), PaletteFile::BGR555);
-                    }));
-                } else {
-                    open_file(&state, file.clone(), PaletteFile::BGR555);
+                    }
                 }
-            }))
+            ))
             .build();
 
         let action_save = ActionEntry::builder("save")
-            .activate(clone!(@weak state => move |_, _, _| {
-                let Some(filepath) = state.palette_file() else {return};
-                save_file(&state, filepath, PaletteFile::default());
-            }))
+            .activate(clone!(
+                #[weak]
+                state,
+                move |_, _, _| {
+                    let Some(filepath) = state.palette_file() else {
+                        return;
+                    };
+                    save_file(&state, filepath, PaletteFile::default());
+                }
+            ))
             .build();
 
         let action_save_as = ActionEntry::builder("saveas")
             .parameter_type(Some(&String::static_variant_type()))
-            .activate(
-                clone!(@weak state => move |_, _, parameter| {
+            .activate(clone!(
+                #[weak]
+                state,
+                move |_, _, parameter| {
                     // parse file format parameter
-                    let Some(file_format) = parameter else {return};
-                    let file_format = file_format.get::<String>().expect("parameter should have type String");
-                    let file_format = PaletteFile::from_str(&file_format).expect("invalid file format");
+                    let Some(file_format) = parameter else { return };
+                    let file_format = file_format
+                        .get::<String>()
+                        .expect("parameter should have type String");
+                    let file_format =
+                        PaletteFile::from_str(&file_format).expect("invalid file format");
 
                     file_save_dialog(&state.clone(), move |_, filepath| {
                         save_file(&state, filepath, file_format);
                     });
-                }),
-            )
+                }
+            ))
             .build();
 
         let actions = SimpleActionGroup::new();

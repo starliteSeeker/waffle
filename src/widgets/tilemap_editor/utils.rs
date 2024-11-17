@@ -43,24 +43,32 @@ pub fn unsaved_tilemap_dialog(state: &Window, after: impl Fn() + Clone + 'static
     save_changes_dialog(
         state,
         message,
-        clone!(@weak state => move || {
-            let after1 = after.clone();
-            if let Some(filepath) = state.tilemap_file() {
-                // save to palette_file
-                save_file(&state, filepath.clone());
-                after1();
-            } else {
-                // save to new file
-                file_save_dialog(&state.clone(), move |_, filepath| {
-                    save_file(&state, filepath);
+        clone!(
+            #[weak]
+            state,
+            move || {
+                let after1 = after.clone();
+                if let Some(filepath) = state.tilemap_file() {
+                    // save to palette_file
+                    save_file(&state, filepath.clone());
                     after1();
-                });
+                } else {
+                    // save to new file
+                    file_save_dialog(&state.clone(), move |_, filepath| {
+                        save_file(&state, filepath);
+                        after1();
+                    });
+                }
             }
-        }),
-        clone!(@weak state => move || {
-            println!("discard unsaved tilemap");
-            state.mark_tilemap_clean();
-            after2();
-        }),
+        ),
+        clone!(
+            #[weak]
+            state,
+            move || {
+                println!("discard unsaved tilemap");
+                state.mark_tilemap_clean();
+                after2();
+            }
+        ),
     );
 }

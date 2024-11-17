@@ -63,24 +63,32 @@ pub fn unsaved_palette_dialog(state: &Window, after: impl Fn() + Clone + 'static
     save_changes_dialog(
         state,
         message,
-        clone!(@weak state => move || {
-            let after1 = after.clone();
-            if let Some(filepath) = state.palette_file() {
-                // save to palette_file
-                save_file(&state, filepath.clone(), PaletteFile::BGR555);
-                after1();
-            } else {
-                // save to new file
-                file_save_dialog(&state.clone(), move |_, filepath| {
-                    save_file(&state, filepath, PaletteFile::BGR555);
+        clone!(
+            #[weak]
+            state,
+            move || {
+                let after1 = after.clone();
+                if let Some(filepath) = state.palette_file() {
+                    // save to palette_file
+                    save_file(&state, filepath.clone(), PaletteFile::BGR555);
                     after1();
-                });
+                } else {
+                    // save to new file
+                    file_save_dialog(&state.clone(), move |_, filepath| {
+                        save_file(&state, filepath, PaletteFile::BGR555);
+                        after1();
+                    });
+                }
             }
-        }),
-        clone!(@weak state => move || {
-            println!("discard unsaved palette");
-            state.mark_palette_clean();
-            after2();
-        }),
+        ),
+        clone!(
+            #[weak]
+            state,
+            move || {
+                println!("discard unsaved palette");
+                state.mark_palette_clean();
+                after2();
+            }
+        ),
     );
 }
