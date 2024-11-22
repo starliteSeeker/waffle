@@ -122,11 +122,25 @@ impl ObjectImpl for Window {
         // save changes before closing
         obj.connect_close_request(|win| {
             if win.palette_dirty() {
-                unsaved_palette_dialog(win, clone!(@weak win => move || win.close()));
+                unsaved_palette_dialog(
+                    win,
+                    clone!(
+                        #[weak]
+                        win,
+                        move || win.close()
+                    ),
+                );
                 return Propagation::Stop;
             }
             if win.tilemap_dirty() {
-                unsaved_tilemap_dialog(win, clone!(@weak win => move || win.close()));
+                unsaved_tilemap_dialog(
+                    win,
+                    clone!(
+                        #[weak]
+                        win,
+                        move || win.close()
+                    ),
+                );
                 return Propagation::Stop;
             }
             println!("quit program");
@@ -134,22 +148,38 @@ impl ObjectImpl for Window {
         });
 
         let action_undo = ActionEntry::builder("undo")
-            .activate(clone!(@weak obj as this => move |_, _, _| {
-                this.undo();
-            }))
+            .activate(clone!(
+                #[weak(rename_to = this)]
+                obj,
+                move |_, _, _| {
+                    this.undo();
+                }
+            ))
             .build();
         let action_redo = ActionEntry::builder("redo")
-            .activate(clone!(@weak obj as this => move |_, _, _| {
-                this.redo();
-            }))
+            .activate(clone!(
+                #[weak(rename_to = this)]
+                obj,
+                move |_, _, _| {
+                    this.redo();
+                }
+            ))
             .build();
         self.obj().add_action_entries([action_undo, action_redo]);
 
         // debug stuff
         let action_debug = ActionEntry::builder("printstuff")
-            .activate(clone!(@weak obj as this => move |_, _, _| {
-                println!("palette dirty: {}, tilemap dirty: {}", this.palette_dirty(), this.tilemap_dirty());
-            }))
+            .activate(clone!(
+                #[weak(rename_to = this)]
+                obj,
+                move |_, _, _| {
+                    println!(
+                        "palette dirty: {}, tilemap dirty: {}",
+                        this.palette_dirty(),
+                        this.tilemap_dirty()
+                    );
+                }
+            ))
             .build();
         let actions = SimpleActionGroup::new();
         actions.add_action_entries([action_debug]);

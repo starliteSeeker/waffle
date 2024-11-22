@@ -32,76 +32,133 @@ impl TilePicker {
 
         // mouse click on tileset drawing
         let gesture = GestureClick::new();
-        gesture.connect_released(clone!(@weak self as this, @weak state => move |_, _, x, y| {
-            let tile_drawing = &this.imp().tile_drawing;
-            if x < 0.0 || x >= tile_drawing.width().into() || y < 0.0 || y >= tile_drawing.height().into() {
-                // coordinate out of range
-                return;
+        gesture.connect_released(clone!(
+            #[weak(rename_to = this)]
+            self,
+            #[weak]
+            state,
+            move |_, _, x, y| {
+                let tile_drawing = &this.imp().tile_drawing;
+                if x < 0.0
+                    || x >= tile_drawing.width().into()
+                    || y < 0.0
+                    || y >= tile_drawing.height().into()
+                {
+                    // coordinate out of range
+                    return;
+                }
+                // account for row offset when calculating correct idx
+                let new_idx =
+                    (this.row_offset() as f64 + y / TILE_W) as u32 * 16 + (x / TILE_W) as u32;
+                if new_idx != state.tileset_sel_idx() {
+                    state.set_tileset_sel_idx(new_idx);
+                }
             }
-            // account for row offset when calculating correct idx
-            let new_idx = (this.row_offset() as f64 + y / TILE_W) as u32 * 16 + (x / TILE_W) as u32;
-            if new_idx != state.tileset_sel_idx() {
-                state.set_tileset_sel_idx(new_idx);
-            }
-        }));
+        ));
         imp.tile_drawing.add_controller(gesture);
 
         // tile size dropdown
-        imp.tile_size_select
-            .connect_selected_notify(clone!(@weak imp, @weak state => move |_| {
-                let new_size = TileSize::iter().nth(imp.tile_size_select.selected() as usize).unwrap();
+        imp.tile_size_select.connect_selected_notify(clone!(
+            #[weak]
+            imp,
+            #[weak]
+            state,
+            move |_| {
+                let new_size = TileSize::iter()
+                    .nth(imp.tile_size_select.selected() as usize)
+                    .unwrap();
                 state.set_tile_size(new_size);
-            }));
+            }
+        ));
 
         // scroll up and down button
         let imp = self.imp();
-        imp.tile_prev
-            .connect_clicked(clone!(@weak self as this => move |_| {
+        imp.tile_prev.connect_clicked(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |_| {
                 let x = this.row_offset();
                 if x >= 8 {
                     this.set_row_offset(x - 8);
                 }
-            }));
-        imp.tile_next
-            .connect_clicked(clone!(@weak self as this, @weak state => move |_| {
+            }
+        ));
+        imp.tile_next.connect_clicked(clone!(
+            #[weak(rename_to = this)]
+            self,
+            #[weak]
+            state,
+            move |_| {
                 let x = this.row_offset();
                 let max_tiles = state.tileset_data().0.len();
                 if x + 8 + 8 < ((max_tiles + 15) / 16) as u32 {
                     this.set_row_offset(x + 8);
                 }
-            }));
+            }
+        ));
 
         self.file_actions(state);
     }
 
     pub fn render_widget(&self, state: &Window) {
-        state.connect_tileset_data_notify(clone!(@weak self as this => move |_| {
-            this.imp().tile_drawing.queue_draw();
-        }));
+        state.connect_tileset_data_notify(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |_| {
+                this.imp().tile_drawing.queue_draw();
+            }
+        ));
 
-        state.connect_tileset_sel_idx_notify(clone!(@weak self as this => move |state| {
-            this.set_index_label(state.tileset_sel_idx() as u16, state.tileset_data().0.len() as u16 - 1);
-            this.imp().tile_drawing.queue_draw();
-        }));
+        state.connect_tileset_sel_idx_notify(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |state| {
+                this.set_index_label(
+                    state.tileset_sel_idx() as u16,
+                    state.tileset_data().0.len() as u16 - 1,
+                );
+                this.imp().tile_drawing.queue_draw();
+            }
+        ));
 
-        self.connect_row_offset_notify(clone!(@weak self as this => move |_| {
-            this.imp().tile_drawing.queue_draw();
-        }));
+        self.connect_row_offset_notify(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |_| {
+                this.imp().tile_drawing.queue_draw();
+            }
+        ));
 
-        state.connect_palette_data_notify(clone!(@weak self as this => move |_| {
-            this.imp().tile_drawing.queue_draw();
-        }));
+        state.connect_palette_data_notify(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |_| {
+                this.imp().tile_drawing.queue_draw();
+            }
+        ));
 
-        state.connect_palette_sel_idx_notify(clone!(@weak self as this => move |_| {
-            this.imp().tile_drawing.queue_draw();
-        }));
+        state.connect_palette_sel_idx_notify(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |_| {
+                this.imp().tile_drawing.queue_draw();
+            }
+        ));
 
-        state.connect_tile_size_notify(clone!(@weak self as this => move |_| {
-            this.imp().tile_drawing.queue_draw();
-        }));
+        state.connect_tile_size_notify(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |_| {
+                this.imp().tile_drawing.queue_draw();
+            }
+        ));
 
-        self.imp().tile_drawing.set_draw_func(
-            clone!(@weak self as this, @weak state => move |_, cr, w, _| {
+        self.imp().tile_drawing.set_draw_func(clone!(
+            #[weak(rename_to = this)]
+            self,
+            #[weak]
+            state,
+            move |_, cr, w, _| {
                 let tiles = &state.tileset_data();
                 let row_offset = this.row_offset();
 
@@ -140,7 +197,7 @@ impl TilePicker {
                         let x = (idx % 16) as f64 * tile_w;
                         let y = (idx / 16) as f64 * tile_w;
                         cr.rectangle(x, y, tile_w, tile_w);
-                    },
+                    }
                     TileSize::Sixteen => {
                         let x = (idx % 16) as f64 * tile_w;
                         let y = (idx / 16) as f64 * tile_w;
@@ -149,14 +206,14 @@ impl TilePicker {
                             // wrap around
                             cr.rectangle(-tile_w, y + tile_w, tile_w * 2.0, tile_w * 2.0);
                         }
-                    },
+                    }
                 };
                 cr.clip_preserve();
                 cr.set_line_width(2.0);
                 let _ = cr.stroke();
                 let _ = cr.restore();
-            }),
-        );
+            }
+        ));
     }
 
     fn set_index_label(&self, idx: u16, max: u16) {
@@ -168,11 +225,17 @@ impl TilePicker {
     fn file_actions(&self, state: &Window) {
         let action_open = ActionEntry::builder("open")
             .parameter_type(Some(&String::static_variant_type()))
-            .activate(
-                clone!(@weak self as this, @weak state => move |_, _, parameter| {
+            .activate(clone!(
+                #[weak(rename_to = this)]
+                self,
+                #[weak]
+                state,
+                move |_, _, parameter| {
                     // parse bit depth parameter
-                    let Some(bpp) = parameter else {return};
-                    let bpp = bpp.get::<String>().expect("parameter should have type String");
+                    let Some(bpp) = parameter else { return };
+                    let bpp = bpp
+                        .get::<String>()
+                        .expect("parameter should have type String");
                     let bpp = Bpp::from_str(&bpp).expect("invalid bit depth");
 
                     file_open_dialog(state.clone(), move |path| {
@@ -191,30 +254,36 @@ impl TilePicker {
                             }
                         }
                     });
-                }),
-            )
+                }
+            ))
             .build();
 
         let action_reload = ActionEntry::builder("reload")
-            .activate(clone!(@weak self as this, @weak state => move |_, _, _| {
-                let Some(path) = state.tileset_file() else {
-                    eprintln!("No palette file currently open");
-                    return;
-                };
-                let bpp = state.tile_bpp();
-                match Tileset::from_file(&path, bpp) {
-                    Err(e) => {
-                        eprintln!("Error: {}", e);
-                    }
-                    Ok(t) => {
-                        println!("reload tileset: {path:?}");
-                        state.set_tileset_data(t);
-                        state.set_tileset_sel_idx(0);
-                        this.set_row_offset(0);
-                        state.clear_history();
+            .activate(clone!(
+                #[weak(rename_to = this)]
+                self,
+                #[weak]
+                state,
+                move |_, _, _| {
+                    let Some(path) = state.tileset_file() else {
+                        eprintln!("No palette file currently open");
+                        return;
+                    };
+                    let bpp = state.tile_bpp();
+                    match Tileset::from_file(&path, bpp) {
+                        Err(e) => {
+                            eprintln!("Error: {}", e);
+                        }
+                        Ok(t) => {
+                            println!("reload tileset: {path:?}");
+                            state.set_tileset_data(t);
+                            state.set_tileset_sel_idx(0);
+                            this.set_row_offset(0);
+                            state.clear_history();
+                        }
                     }
                 }
-            }))
+            ))
             .build();
 
         let actions = SimpleActionGroup::new();
